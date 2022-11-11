@@ -24,7 +24,6 @@ Section Relation.
 End Relation.
 
 
-Section SystemF.
 
   Inductive ty : Type :=
   | Ty_Var : string -> ty
@@ -175,6 +174,8 @@ Section SystemF.
 
   Definition context := gmap string ty.
   Definition tcontext := list string.
+
+  (* TODO notation / definition for the empty context and tcontext *)
 
   Reserved Notation "Δ ';' Γ '⊢' t '∈' T"
     (at level 101, t custom sf, T custom sf at level 0).
@@ -348,4 +349,3 @@ Section SystemF.
     apply step_lam.
     apply is_val_of_val.
   Qed.
-End SystemF.
