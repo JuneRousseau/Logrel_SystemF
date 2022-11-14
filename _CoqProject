@@ -1,2 +1,2 @@
 -Q theories/ logical_relation
-theories/systemF.v
+theories/systemF_alt.v
