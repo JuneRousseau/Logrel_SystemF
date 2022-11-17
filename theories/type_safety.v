@@ -1,7 +1,7 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
 From Coq Require Import Strings.String.
 From stdpp Require Import gmap list.
-From logical_relation Require Import systemF_alt.
+From logical_relation Require Import syntax opsem_systemF.
 
 Definition safe (e: expr) :=
   forall e', e ~>* e' ->
@@ -237,3 +237,7 @@ Proof.
 Qed.
 
 (** Logical relation and free theorems --- new files *)
+
+Definition safe_parametrized (P : expr -> Prop) (e : expr) :
+  forall e', e ~>* e' ->
+        (is_val e' /\ P e) \/ (exists e'', e' ~> e'').
