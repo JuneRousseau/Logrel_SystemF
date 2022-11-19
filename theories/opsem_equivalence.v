@@ -1,7 +1,7 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
 From Coq Require Import Strings.String.
 From stdpp Require Import gmap list.
-From logical_relation Require Import opsem_systemF opsem_systemF_ctx syntax.
+From logical_relation Require Import opsem_systemF opsem_systemF_ctx syntax_systemF.
 
 Lemma is_val_canonical e:
   is_val e -> exists v, e = (of_val v).
