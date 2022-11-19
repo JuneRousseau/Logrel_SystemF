@@ -1,151 +1,124 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
-Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
 From Coq Require Import Strings.String.
 From stdpp Require Import gmap list.
+From logical_relation Require Import relation.
+
+Inductive ty : Type :=
+| Ty_Var : string -> ty
+| Ty_Unit : ty
+| Ty_Pair : ty -> ty -> ty
+| Ty_Arrow : ty -> ty -> ty
+| Ty_Forall : string -> ty -> ty.
+
+Inductive expr : Type :=
+| expr_var : string -> expr
+| expr_unit : expr
+| expr_pair : expr -> expr -> expr
+| expr_fst : expr -> expr
+| expr_snd : expr -> expr
+| expr_app : expr -> expr -> expr
+| expr_abs : string -> expr -> expr
+| expr_tapp : expr -> expr
+| expr_tabs : expr -> expr.
+Inductive val :=
+| val_unit : val
+| val_pair : val -> val -> val
+| val_abs : string -> expr -> val
+| val_tabs : expr -> val
+.
+
+Fixpoint of_val (v : val) : expr :=
+  match v with
+  | val_unit => expr_unit
+  | val_pair v1 v2 => expr_pair (of_val v1) (of_val v2)
+  | val_abs s e => expr_abs s e
+  | val_tabs e => expr_tabs e
+  end.
+
+Fixpoint to_val (e : expr) : option val :=
+  match e with
+  | expr_unit => Some val_unit
+  | expr_abs s e => Some (val_abs s e)
+  | expr_tabs e => Some (val_tabs e)
+  | expr_pair e1 e2 =>
+      match (to_val e1) with
+      | None => None
+      | Some v1 =>
+          match (to_val e2) with
+          | None => None
+          | Some v2 => Some (val_pair v1 v2)
+          end
+      end
+  | _ => None
+  end.
+
+Inductive is_val : expr -> Prop :=
+| v_unit : is_val expr_unit
+| v_pair : forall v1 v2, is_val v1 -> is_val v2 -> is_val (expr_pair v1 v2)
+| v_abs : forall x t1, is_val (expr_abs x t1)
+| v_tabs : forall t1, is_val (expr_tabs t1).
+
+Hint Constructors is_val : core.
 
 
-Section Relation.
-  Variable A: Type. (* the type of states *)
-  Variable R: A -> A -> Prop. (* the transition relation between states *)
+(** Equality  *)
+Lemma to_of_val v : to_val (of_val v) = Some v.
+Proof.
+  by induction v; simplify_option_eq; repeat f_equal; try apply (proof_irrel _).
+Qed.
 
-  Inductive star : A -> A -> Prop :=
-  | star_refl: forall a, star a a
-  | star_step: forall a b c, R a b -> star b c -> star a c.
+Lemma of_to_val e v : to_val e = Some v → of_val v = e.
+Proof.
+  revert v; induction e; intros v ?; simplify_option_eq; auto with f_equal.
+  destruct (to_val e1); simpl;[|  discriminate].
+  destruct (to_val e2); simpl;[|  discriminate].
+  simplify_option_eq; auto with f_equal.
+Qed.
 
-  Lemma star_one:
-    forall (a b: A), R a b -> star a b.
-  Proof.
-    eauto using star.
-  Qed.
-
-  Lemma star_trans:
-    forall (a b: A), star a b -> forall c, star b c -> star a c.
-  Proof.
-    induction 1; eauto using star.
-  Qed.
-
-  Definition deterministic R :=
-  ∀ x y1 y2 : A, R x y1 → R x y2 → y1 = y2.
-End Relation.
-
-
-
-  Inductive ty : Type :=
-  | Ty_Var : string -> ty
-  | Ty_Unit : ty
-  | Ty_Pair : ty -> ty -> ty
-  | Ty_Arrow : ty -> ty -> ty
-  | Ty_Forall : string -> ty -> ty.
-
-  Inductive expr : Type :=
-  | expr_var : string -> expr
-  | expr_unit : expr
-  | expr_pair : expr -> expr -> expr
-  | expr_fst : expr -> expr
-  | expr_snd : expr -> expr
-  | expr_app : expr -> expr -> expr
-  | expr_abs : string -> expr -> expr
-  | expr_tapp : expr -> expr
-  | expr_tabs : expr -> expr.
-  Inductive val :=
-  | val_unit : val
-  | val_pair : val -> val -> val
-  | val_abs : string -> expr -> val
-  | val_tabs : expr -> val
-  .
-
-  Fixpoint of_val (v : val) : expr :=
-    match v with
-    | val_unit => expr_unit
-    | val_pair v1 v2 => expr_pair (of_val v1) (of_val v2)
-    | val_abs s e => expr_abs s e
-    | val_tabs e => expr_tabs e
-    end.
-
-  Fixpoint to_val (e : expr) : option val :=
-    match e with
-    | expr_unit => Some val_unit
-    | expr_abs s e => Some (val_abs s e)
-    | expr_tabs e => Some (val_tabs e)
-    | expr_pair e1 e2 =>
-        match (to_val e1) with
-        | None => None
-        | Some v1 =>
-            match (to_val e2) with
-            | None => None
-            | Some v2 => Some (val_pair v1 v2)
-            end
-        end
-    | _ => None
-    end.
-
-  Inductive is_val : expr -> Prop :=
-  | v_unit : is_val expr_unit
-  | v_pair : forall v1 v2, is_val v1 -> is_val v2 -> is_val (expr_pair v1 v2)
-  | v_abs : forall x t1, is_val (expr_abs x t1)
-  | v_tabs : forall t1, is_val (expr_tabs t1).
-
-  Hint Constructors is_val : core.
+Lemma is_val_of_val: forall v, is_val (of_val v).
+Proof.
+  intros.
+  induction v; simpl.
+  apply v_unit.
+  apply v_pair; done.
+  apply v_abs.
+  apply v_tabs.
+Qed.
 
 
-  (** Equality  *)
-  Lemma to_of_val v : to_val (of_val v) = Some v.
-  Proof.
-    by induction v; simplify_option_eq; repeat f_equal; try apply (proof_irrel _).
-  Qed.
+Declare Custom Entry sf.
+Notation "<{ e }>" := e (e custom sf at level 99).
+Notation "x" := x (in custom sf at level 0, x constr at level 0).
+Notation "S -> T" := (Ty_Arrow S T) (in custom sf at level 50, right associativity).
+Notation "S × T" := (Ty_Pair S T) (in custom sf at level 50, right associativity).
+Notation "'()'" := Ty_Unit (in custom sf at level 0).
+Notation "∀ α , T" := (Ty_Forall α T) (in custom sf at level 50).
+Coercion expr_var : string >-> expr.
+Notation "'tt'" := expr_unit (in custom sf at level 0).
+Notation "'⟨' e1 ',' e2 '⟩'" := (expr_pair e1 e2) (in custom sf at level 90,
+                                      e1 at level 99,
+                                      e2 at level 99).
+Notation "'fst' e" := (expr_fst e) (in custom sf at level 2).
+Notation "'snd' e" := (expr_snd e) (in custom sf at level 2).
+Notation "e1 e2" := (expr_app e1 e2) (in custom sf at level 1, left associativity).
+Notation "'λ' x ',' y" :=
+  (expr_abs x y) (in custom sf at level 90, x at level 99,
+        y custom sf at level 99,
+        left associativity).
+Notation "e1 '_'" := (expr_tapp e1) (in custom sf at level 1, left associativity).
+Notation "'Λ' e" :=
+  (expr_tabs e) (in custom sf at level 90,
+        e custom sf at level 99,
+        left associativity).
 
-  Lemma of_to_val e v : to_val e = Some v → of_val v = e.
-  Proof.
-    revert v; induction e; intros v ?; simplify_option_eq; auto with f_equal.
-    destruct (to_val e1); simpl;[|  discriminate].
-    destruct (to_val e2); simpl;[|  discriminate].
-    simplify_option_eq; auto with f_equal.
-  Qed.
-
-  Lemma is_val_of_val: forall v, is_val (of_val v).
-  Proof.
-    intros.
-    induction v; simpl.
-    apply v_unit.
-    apply v_pair; done.
-    apply v_abs.
-    apply v_tabs.
-  Qed.
-
-
-  Declare Custom Entry sf.
-  Notation "<{ e }>" := e (e custom sf at level 99).
-  Notation "x" := x (in custom sf at level 0, x constr at level 0).
-  Notation "S -> T" := (Ty_Arrow S T) (in custom sf at level 50, right associativity).
-  Notation "S × T" := (Ty_Pair S T) (in custom sf at level 50, right associativity).
-  Notation "'()'" := Ty_Unit (in custom sf at level 0).
-  Notation "∀ α , T" := (Ty_Forall α T) (in custom sf at level 50).
-  Coercion expr_var : string >-> expr.
-  Notation "'tt'" := expr_unit (in custom sf at level 0).
-  Notation "'⟨' e1 ',' e2 '⟩'" := (expr_pair e1 e2) (in custom sf at level 90,
-                                     e1 at level 99,
-                                     e2 at level 99).
-  Notation "'fst' e" := (expr_fst e) (in custom sf at level 2).
-  Notation "'snd' e" := (expr_snd e) (in custom sf at level 2).
-  Notation "e1 e2" := (expr_app e1 e2) (in custom sf at level 1, left associativity).
-  Notation "'λ' x ',' y" :=
-    (expr_abs x y) (in custom sf at level 90, x at level 99,
-          y custom sf at level 99,
-          left associativity).
-  Notation "e1 '_'" := (expr_tapp e1) (in custom sf at level 1, left associativity).
-  Notation "'Λ' e" :=
-    (expr_tabs e) (in custom sf at level 90,
-          e custom sf at level 99,
-          left associativity).
-
-  Definition x : string := "x".
-  Definition y : string := "y".
-  Definition z : string := "z".
-  Definition α : string := "α".
-  Hint Unfold x : core.
-  Hint Unfold y : core.
-  Hint Unfold z : core.
-  Hint Unfold α : core.
+Definition x : string := "x".
+Definition y : string := "y".
+Definition z : string := "z".
+Definition α : string := "α".
+Hint Unfold x : core.
+Hint Unfold y : core.
+Hint Unfold z : core.
+Hint Unfold α : core.
 
 Fixpoint subst_term (x : string) (s : expr) (t : expr) : expr :=
   match t with

@@ -1,7 +1,7 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
 From Coq Require Import Strings.String.
 From stdpp Require Import gmap list.
-From logical_relation Require Import syntax.
+From logical_relation Require Import relation syntax_systemF.
 
 
 Reserved Notation "t '-h->' t'" (at level 60).

@@ -1,7 +1,7 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
 From Coq Require Import Strings.String.
 From stdpp Require Import gmap list.
-From logical_relation Require Import syntax opsem_systemF.
+From logical_relation Require Import syntax_systemF opsem_systemF.
 
 Implicit Types Δ : tcontext.
 Implicit Types Γ : context.

@@ -7,3 +7,5 @@
 /Makefile.coq.conf
 /.Makefile.coq.d
 /Makefile
+/.Makefile.d
+/Makefile.conf
