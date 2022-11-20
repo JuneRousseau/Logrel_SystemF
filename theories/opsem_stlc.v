@@ -122,3 +122,55 @@ Proof.
     apply step_e in H.
     rewrite H. auto.
 Admitted.
+
+
+Lemma is_val_inversion : forall e, is_val e -> exists v, e = (of_val v).
+Proof.
+  intros.
+  destruct e;inversion H;[ exists val_true | exists val_false | eexists (val_abs _ _) ]; eauto.
+Qed.
+
+Lemma mstep_app_arg: forall e v f,
+  is_val f ->
+  e ~>* v ->
+  <{ f e }> ~>*
+  <{ f v }>.
+Proof.
+  intros * f_val H.
+  induction H using star_ind.
+  - apply star_refl.
+  - eapply relation.star_step with (b := <{ f b }>); auto.
+Qed.
+
+Lemma mstep_if: forall e e' e1 e2,
+  e ~>* e' ->
+  <{ if e then e1 else e2}> ~>*
+  <{ if e' then e1 else e2}>.
+Proof.
+  intros.
+  induction H using star_ind.
+  - apply star_refl.
+  - eapply relation.star_step with (b := <{ if b then e1 else e2 }>); auto.
+Qed.
+
+Lemma mstep_if_true: forall e e1 e2,
+  e ~>* <{ true }> ->
+  <{ if e then e1 else e2}> ~>*
+  <{ e1 }>.
+Proof.
+  intros.
+  eapply relation.star_trans with (b := <{ if true then e1 else e2 }>).
+  apply mstep_if; auto.
+  eapply star_one;auto.
+Qed.
+
+Lemma mstep_if_false: forall e e1 e2,
+  e ~>* <{ false }> ->
+  <{ if e then e1 else e2}> ~>*
+  <{ e2 }>.
+Proof.
+  intros.
+  eapply relation.star_trans with (b := <{ if false then e1 else e2 }>).
+  apply mstep_if; auto.
+  eapply star_one;auto.
+Qed.

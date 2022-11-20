@@ -19,14 +19,14 @@ Inductive val :=
 | val_false : val
 | val_abs : string -> expr -> val.
 
-Fixpoint of_val (v : val) : expr :=
+Definition of_val (v : val) : expr :=
   match v with
   | val_true => expr_true
   | val_false => expr_false
   | val_abs s e => expr_abs s e
   end.
 
-Fixpoint to_val (e : expr) : option val :=
+Definition to_val (e : expr) : option val :=
   match e with
   | expr_true => Some val_true
   | expr_false => Some val_false

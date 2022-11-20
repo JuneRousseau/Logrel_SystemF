@@ -7,7 +7,6 @@ Section Relation.
   Inductive star : A -> A -> Prop :=
   | star_refl: forall a, star a a
   | star_step: forall a b c, R a b -> star b c -> star a c.
-  Hint Constructors star : core.
 
   Lemma star_one:
     forall (a b: A), R a b -> star a b.
@@ -36,3 +35,5 @@ Section Relation.
         apply IHstar; auto.
   Qed.
 End Relation.
+
+Hint Constructors star : core.
