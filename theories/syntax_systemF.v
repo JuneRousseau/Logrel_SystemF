@@ -148,6 +148,8 @@ Fixpoint subst_type (α : string) (s : ty) (t : ty) : ty :=
   | <{ ∀ β , τ1  }> => if String.eqb α β then t else <{ ∀ β , (subst_type α s τ1) }>
   end.
 Notation "'[' α ':=' s ']' t" := (subst_type α s t) (in custom sf at level 20).
+
+(* TODO simultaneous substitution ?? better way ?*)
 Fixpoint replace_var xs vs y t : expr :=
   match xs,vs with
   | nil, _ => t
@@ -177,42 +179,7 @@ Fixpoint subst_term_seq (xs : list string) (vs : list expr) (t : expr) : expr :=
   | <{ Λ t1 }> => <{ Λ (subst_term_seq xs vs t1) }>
   end.
 
-(* Lemma subst_term_seq_pair xs vs e1 e2 : *)
-(*   subst_term_seq xs vs <{⟨e1, e2⟩}> = *)
-(*   expr_pair (subst_term_seq xs vs e1) (subst_term_seq xs vs e2). *)
-(* Proof. *)
-(*   by simpl. *)
-(* Qed. *)
-
-(* Lemma subst_term_seq_fst xs vs e : *)
-(*   subst_term_seq xs vs <{fst e}> = *)
-(*   expr_fst (subst_term_seq xs vs e). *)
-(* Proof. *)
-(*   by simpl. *)
-(* Qed. *)
-
-(* Lemma subst_term_seq_snd xs vs e : *)
-(*   subst_term_seq xs vs <{snd e}> = *)
-(*   expr_snd (subst_term_seq xs vs e). *)
-(* Proof. *)
-(*   by simpl. *)
-(* Qed. *)
-
-(* Lemma subst_term_seq_lam xs vs x e : *)
-(*   (* TODO miss a condition: x ∉ xs *) *)
-(*   subst_term_seq xs vs <{ λ x, e }> = *)
-(*   expr_abs x (subst_term_seq xs vs e). *)
-(* Proof. *)
-(* Admitted. *)
-
-(* Lemma subst_term_seq_app xs vs e1 e2 : *)
-(*   subst_term_seq xs vs <{e1 e2}> = *)
-(*   expr_app (subst_term_seq xs vs e1) (subst_term_seq xs vs e2). *)
-(* Proof. *)
-(*   by simpl. *)
-(* Qed. *)
-
-
+(* Use gmap ? My own partial map ? list ? *)
 Definition context := gmap string ty.
 Definition tcontext := list string.
 
@@ -242,8 +209,10 @@ Inductive appears_free_in (x : string) : expr → Prop :=
 
 Inductive free (α : string) : ty -> Prop :=
 | free_var : free α (Ty_Var α)
-| free_pair : forall τ1 τ2, free α τ1 -> free α τ2 -> free α <{ τ1 × τ2 }>
-| free_arrow : forall τ1 τ2, free α τ1 -> free α τ2  -> free α <{ τ1 -> τ2 }>
+| free_pair1 : forall τ1 τ2, free α τ1 -> free α <{ τ1 × τ2 }>
+| free_pair2 : forall τ1 τ2, free α τ2 -> free α <{ τ1 × τ2 }>
+| free_arrow1 : forall τ1 τ2, free α τ1 -> free α <{ τ1 -> τ2 }>
+| free_arrow2 : forall τ1 τ2, free α τ2  -> free α <{ τ1 -> τ2 }>
 | free_forall : forall τ β, α ≠ β -> free α τ -> free α <{ ∀ β, τ }>.
 
 Definition not_free α (Γ : context) (t : string * ty) : Prop :=
@@ -253,6 +222,7 @@ Definition not_free α (Γ : context) (t : string * ty) : Prop :=
   | Some τ => not (free α τ)
   end.
 
+(* TODO better way than using gmap_to_list ? *)
 Definition not_free_context (α : string) (Γ : context) :=
   Forall (not_free α Γ) (gmap_to_list Γ).
 

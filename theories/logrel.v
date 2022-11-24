@@ -3,14 +3,17 @@ From Coq Require Import Strings.String.
 From stdpp Require Import gmap list.
 From logical_relation Require Import syntax_systemF opsem_systemF.
 
+(** Logical relation for type soundness *)
 Implicit Types Δ : tcontext.
 Implicit Types Γ : context.
 Implicit Types τ : ty.
 
+(* TODO gmap ? *)
 Definition substitution := gmap string (expr -> Prop).
 Implicit Types ξ : substitution.
 
-(** Logical relation and free theorems --- new files *)
+(** Safe parametrized by P
+    cf Section 4. Safe_{P}(e) *)
 Definition safe_parametrized (P : expr -> Prop) (e : expr) :=
   forall e', e ~>* e' ->
         (is_val e' /\ P e') \/ (exists e'', e' ~> e'').
@@ -47,6 +50,10 @@ Proof.
 Qed.
 
 
+(** Logical relation for type safety defined using safe parametrized
+    cf Section 5. Predicates on values *)
+(* TODO Note that we are implicitly assuming that the domain of the partial mapping ξ in
+[∆ ⊢ τ ]ξ is always ∆ *)
 Fixpoint safe_lr (Δ : tcontext) (ξ : substitution) (τ : ty) (v : expr) :=
   is_val v /\
  match τ with
@@ -79,36 +86,50 @@ Lemma logrel_subst Δ ξ τ τ' v α :
   <-> (safe_lr (α::Δ) (<[α := safe_lr Δ ξ τ']> ξ) τ v).
 Proof.
   split; intros Hsafe.
-  generalize dependent τ'.
-  generalize dependent v.
-  generalize dependent ξ.
-  generalize dependent Δ.
-  induction τ; intros * Hsafe; simpl in *; auto.
-  - admit.
-  - (* pair *)
+  - generalize dependent τ'.
+    generalize dependent α.
+    generalize dependent v.
+    generalize dependent ξ.
+    generalize dependent Δ.
+    induction τ; intros * Hsafe; simpl in *; auto.
+  + split; [by apply safe_is_val in Hsafe|].
+    destruct (α =? s)%string eqn:Heq.
+    * apply String.eqb_eq in Heq; subst.
+      assert (Heq: <[s:=safe_lr Δ ξ τ']> ξ !! s = Some (safe_lr Δ ξ τ'))
+      by apply lookup_insert.
+      by rewrite Heq.
+    * cbn in Hsafe ; destruct Hsafe as [_ Hsafe].
+      apply String.eqb_neq in Heq.
+      assert (Hmap: <[α:=safe_lr Δ ξ τ']> ξ !! s = ξ !! s)
+      by (apply lookup_insert_ne;auto).
+      rewrite Hmap.
+      apply Hsafe.
+  + (* pair *)
     destruct Hsafe as (Hval & v1 & v2 & Hval1 & Hval2 & -> & Hsafe1 & Hsafe2).
     split;auto.
     exists v1, v2.
     repeat(split;auto).
-  - (* lambda *)
+  + (* lambda *)
     destruct Hsafe as (Hval & x & e & -> & Hsafe).
     split;auto.
     exists x, e.
     split;auto.
     intros.
     admit.
-  - (* poly *)
+  + (* poly *)
     destruct (α =? s)%string eqn:Heq ; simpl in Hsafe
     ;destruct Hsafe as (Hval & e & Hv & Hsafe); split;auto; exists e
     ; split; auto
     ; intros;
-    specialize (Hsafe P).
-    (* I need to be able to swap α and s *)
+      specialize (Hsafe P).
+    (* I need to be able to swap α and s *)
     admit.
+    admit.
+  -
 Admitted.
 
 Lemma logrel_weaken Δ ξ τ v α P :
-  free α τ ->
+  not (free α τ) ->
   ((safe_lr Δ ξ τ v) <->
   (safe_lr Δ  (<[α := P]> ξ) τ v)).
 Proof.
@@ -117,12 +138,18 @@ Proof.
   generalize dependent v;
   induction τ; intros; simpl in *;
   destruct Hsafe; split; auto.
-  - admit.
+  - unfold not in H.
+    destruct (decide (α = s)%string); subst.
+    + (* \alpha = s --> contradiction with free *)
+      exfalso; apply H; apply free_var.
+    + replace (<[α:=P]> ξ !! s) with (ξ !! s)
+    by (symmetry ; apply lookup_insert_ne;auto).
+    auto.
   - destruct H1 as (v1 & v2 & Hv1 & Hv2 & Hv& Hsafe1 & Hsafe2).
     exists v1, v2.
-    repeat(split;auto); inversion H; subst.
-    apply IHτ1;auto.
-    apply IHτ2;auto.
+    repeat(split;auto).
+    apply IHτ1;auto; intro; apply H; by apply free_pair1.
+    apply IHτ2;auto; intro; apply H; by apply free_pair2.
   - admit.
   - admit.
   - admit.
@@ -131,8 +158,7 @@ Proof.
   - admit.
 Admitted.
 
-(* TODO *)
-
+(* TODO better way to define the sequence ? *)
 Fixpoint logrel_seq_list Δ (lΓ : list (string*ty))  ξ (vs : list expr) : Prop :=
   match lΓ with
   | nil => List.length vs = 0
@@ -177,7 +203,44 @@ Definition context_var Γ : list string :=
 Lemma subst_term_seq_insert Γ vs x τ v e :
   (subst_term_seq (context_var (<[x:=τ]> Γ)) (v :: vs) e) =
     subst_term x v (subst_term_seq (context_var Γ) (vs) e).
+Proof.
+  generalize dependent Γ.
+  generalize dependent vs.
+  generalize dependent x.
+  generalize dependent τ.
+  generalize dependent v.
+  induction e; intros ; auto; cbn.
+  - (* var *)
+    induction Γ using map_ind.
+    + replace (context_var (<[x:=τ]> ∅)) with [x].
+      replace (context_var ∅) with ([] : list string).
+      reflexivity.
+      unfold context_var.
+      (* rewrite map_to_list_empty. *)
+      admit.
+      admit.
+    + admit.
+  - (* pair *)
+    by rewrite IHe1, IHe2.
+  - (* fst *)
+    by rewrite IHe.
+  - (* snd *)
+    by rewrite IHe.
+  - (* app *)
+    by rewrite IHe1, IHe2.
+  - (* abs *)
+    rewrite IHe.
+    (* TODO do I miss an hypothesis about Γ ? *)
+    (* destruct (decide (s = x)); subst. *)
+    (* + (* s = x*) *)
+    admit.
+
+  - (* tapp *)
+    by rewrite IHe.
+  - (* tabs *)
+    by rewrite IHe.
 Admitted.
+
 Theorem fundamental_theorem Δ Γ τ e :
   Δ;Γ ⊢ e ∈ τ -> (forall ξ vs, logrel_seq Δ Γ ξ vs
                          -> safe_parametrized
@@ -188,9 +251,14 @@ Proof.
     apply safe_val; auto.
     simpl in * ; split ; auto.
   - (* T_Var *)
+    induction Γ using map_ind.
+    unfold replace_var.
+    (* TODO from H, we know that x \in (context_var \Gamma), and thus we can replace
+       the variable *)
     admit.
   - (* T_Prod *)
-    rewrite subst_term_seq_pair.
+    (* TODO how to cbn just subst_term_seq ? *)
+    cbn.
     repeat intro.
     pose proof H1 as H1'.
     apply IHtyping_judgment1 in H1.
@@ -198,7 +266,7 @@ Proof.
     unfold safe_parametrized in H1,H1'.
     admit.
   - (* T_Fst *)
-    rewrite subst_term_seq_fst; cbn.
+    cbn.
     (* apply IHtyping_judgment in H0. *)
     (* destruct H0 as (is_val_e & e1 & e2 & is_val_e1 & is_val_e2 & v_pair *)
     (*                 & Hsafe_e1 & Hsafe_e2). *)
@@ -206,6 +274,7 @@ Proof.
     (* backward safe_lr, because fst(e1,e2) -> e1, it suffices to show on e1 *)
     admit.
   - (* T_Snd *)
+    cbn.
     (* rewrite subst_term_seq_snd; cbn in *. *)
     (* apply IHtyping_judgment in H0. *)
     (* destruct H0 as (is_val_e & e1 & e2 & is_val_e1 & is_val_e2 & v_pair *)
@@ -213,17 +282,28 @@ Proof.
     (* rewrite v_pair. *)
     admit.
   - (* T_Lam *)
-    rewrite subst_term_seq_lam.
+    cbn.
+    set( v :=
+           match find (String.eqb x) (context_var Γ) with
+           | Some _ => <{ λ x, e }>
+           | None => (expr_abs x (subst_term_seq (context_var Γ) vs e))
+           end
+       ).
+    assert (is_val v).
+    { destruct (find (String.eqb x) (context_var Γ)) ; subst v; auto. }
     apply safe_val;auto.
     split;auto.
-    exists x. exists (subst_term_seq (context_var Γ) vs e). split; auto.
-    intros.
-    assert ( logrel_seq Δ (<[x := τ1]> Γ) ξ (v'::vs)). admit.
-    apply IHtyping_judgment in H2. simpl in H2.
-    cbn in H2.
-    unfold subst_term_seq in H2.
-    rewrite subst_term_seq_insert in H2.
-    apply H2.
+    exists x. exists (subst_term_seq (context_var Γ) vs e).
+    split.
+    + subst v. admit.
+    + intros.
+      assert ( logrel_seq Δ (<[x := τ1]> Γ) ξ (v'::vs)). admit.
+    (* apply IHtyping_judgment in H2. simpl in H2. *)
+    (* cbn in H2. *)
+    (* unfold subst_term_seq in H2. *)
+    (* rewrite subst_term_seq_insert in H2. *)
+    (* apply H2. *)
+      admit.
   - (* T_App *)
     admit.
   - (* T_TLam *)

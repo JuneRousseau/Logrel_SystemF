@@ -51,9 +51,6 @@ Hint Constructors step : core.
 Definition mstep := star expr step.
 Notation "t '~>*' t'" := (mstep t t') (at level 60).
 
-(* Definition reducible (e : expr) := *)
-(*   ∃ e', step e e'. *)
-
 (** Examples *)
 Goal <{ (λ x , x) tt }> ~>* <{tt}>.
 Proof.
@@ -89,6 +86,7 @@ Proof.
   apply is_val_of_val.
 Qed.
 
+(** Properties in the operational semantic *)
 Lemma is_val_stuck : forall e e', is_val e -> not (e ~> e').
 Proof.
   intros e e' val_e.
@@ -151,6 +149,7 @@ Proof.
     eapply IHstep_e' in H0; subst;auto.
 Qed.
 
+(* is that even true ? for deterministic rewriting system ? *)
 Lemma star_step : forall e e2 e3,
   e ~>* e2 ->
   e2 ~> e3 ->
@@ -184,4 +183,4 @@ Proof.
   - eapply sf_deterministic in step_e.
     apply step_e in H.
     rewrite H. auto.
-Admitted.
+Qed.
