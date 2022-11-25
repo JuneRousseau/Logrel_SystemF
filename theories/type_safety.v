@@ -27,10 +27,6 @@ Proof.
   - (* app *)
 Abort.
 
-Lemma is_val_inversion: forall e, is_val e -> ∃ v, e = (of_val v).
-Proof.
-Admitted.
-
 (** Progress and preservation *)
 Theorem progress : ∀ e t,
   nil; empty ⊢ e ∈ t ->

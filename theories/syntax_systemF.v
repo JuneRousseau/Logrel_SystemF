@@ -179,6 +179,8 @@ Fixpoint subst_term_seq (xs : list string) (vs : list expr) (t : expr) : expr :=
   | <{ Λ t1 }> => <{ Λ (subst_term_seq xs vs t1) }>
   end.
 
+(* autosubbst check iris lr *)
+
 (* Use gmap ? My own partial map ? list ? *)
 Definition context := gmap string ty.
 Definition tcontext := list string.
@@ -224,7 +226,7 @@ Definition not_free α (Γ : context) (t : string * ty) : Prop :=
 
 (* TODO better way than using gmap_to_list ? *)
 Definition not_free_context (α : string) (Γ : context) :=
-  Forall (not_free α Γ) (gmap_to_list Γ).
+forall x y, Γ !! x = Some y -> not (free α y).
 
 Inductive typing_judgment : tcontext -> context -> expr -> ty -> Prop :=
 | T_Unit: forall Δ Γ, Δ;Γ ⊢ tt ∈ ()
@@ -256,3 +258,14 @@ Inductive typing_judgment : tcontext -> context -> expr -> ty -> Prop :=
 where "Δ ; Γ '⊢' t '∈' T" := (typing_judgment Δ Γ t T).
 
 Notation "( x )" := x (in custom sf, x at level 99).
+
+Lemma is_val_inversion : forall e, is_val e -> exists v, e = (of_val v).
+Proof.
+  intros.
+  induction e;inversion H
+  ;[ exists val_unit | | eexists (val_abs _ _)
+     | eexists (val_tabs _) ]; eauto.
+  apply IHe1 in H2; apply IHe2 in H3.
+  destruct H2; destruct H3; subst.
+  exists (val_pair x0 x1); eauto.
+Qed.

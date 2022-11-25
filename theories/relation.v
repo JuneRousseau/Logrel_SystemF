@@ -36,4 +36,5 @@ Section Relation.
   Qed.
 End Relation.
 
+#[export]
 Hint Constructors star : core.
