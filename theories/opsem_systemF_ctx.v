@@ -142,3 +142,124 @@ Lemma is_val_step : forall e e', is_val e -> e ~>* e' -> e' = e.
   inversion mstep; subst; auto.
   by apply is_val_stuck in H.
 Qed.
+
+Fixpoint comp_ectx (K: ectx) (K' : ectx) : ectx :=
+  match K with
+  | EmptyCtx => K'
+  | FstCtx K => FstCtx (comp_ectx K K')
+  | SndCtx K => SndCtx (comp_ectx K K')
+  | LPairCtx K v => LPairCtx (comp_ectx K K') v
+  | RPairCtx K v => RPairCtx (comp_ectx K K') v
+  | LAppCtx K v => LAppCtx (comp_ectx K K') v
+  | RAppCtx K v => RAppCtx (comp_ectx K K') v
+  | TAppCtx K => TAppCtx (comp_ectx K K')
+  end.
+
+
+Lemma fill_comp (K1 K2 : ectx) e : fill K1 (fill K2 e) = fill (comp_ectx K1 K2) e.
+Proof. induction K1; simpl; congruence. Qed.
+
+Lemma pure_contextual_step e1 e2 :
+  pure_step e1 e2 → step e1 e2.
+Proof. eapply (Step _ _ EmptyCtx) ; by rewrite ?fill_empty. Qed.
+
+Lemma fill_contextual_step K e1 e2 :
+  step e1 e2 → step (fill K e1) (fill K e2).
+Proof.
+  destruct 1 as [K' e1' e2' -> ->].
+  rewrite !fill_comp. by econstructor.
+Qed.
+
+(* Lemma about the context *)
+Lemma cstep_app_r' f e e':
+  step e e' →
+  step (expr_app (of_val f) e) (expr_app (of_val f) e').
+Proof.
+  intros Hstep.
+  by apply (fill_contextual_step (RAppCtx EmptyCtx f)) in Hstep.
+Qed.
+
+Lemma cstep_app_r f e e':
+  is_val f ->
+  step e e' →
+  step (expr_app f e) (expr_app f e').
+Proof.
+  intros Hv Hstep.
+  apply is_val_inversion in Hv; destruct Hv; subst.
+  by apply cstep_app_r'.
+Qed.
+
+Lemma cstep_app_l e1 e1' e2:
+  step e1 e1' →
+  step (expr_app e1 e2) (expr_app e1' e2).
+Proof.
+  intros Hstep.
+  by eapply (fill_contextual_step (LAppCtx EmptyCtx e2)).
+Qed.
+
+Lemma cstep_tapp e e':
+  step e e' →
+  step (expr_tapp e) (expr_tapp e').
+Proof.
+  intros Hstep.
+  by eapply (fill_contextual_step (TAppCtx EmptyCtx)).
+Qed.
+
+Lemma cstep_fst e e':
+  step e e' →
+  step (expr_fst e) (expr_fst e').
+Proof.
+  intros Hstep.
+  by eapply (fill_contextual_step (FstCtx EmptyCtx)).
+Qed.
+
+Lemma cstep_snd e e':
+  step e e' →
+  step (expr_snd e) (expr_snd e').
+Proof.
+  intros Hstep.
+  by eapply (fill_contextual_step (SndCtx EmptyCtx)).
+Qed.
+
+Lemma cstep_pair_l e1 e1' e2:
+  step e1 e1' →
+  step (expr_pair e1 e2) (expr_pair e1' e2).
+Proof.
+  intros Hstep.
+  by eapply (fill_contextual_step (LPairCtx EmptyCtx e2)).
+Qed.
+
+Lemma cstep_pair_r' v e e':
+  step e e' →
+  step (expr_pair (of_val v) e) (expr_pair (of_val v) e').
+Proof.
+  intros Hstep.
+  by apply (fill_contextual_step (RPairCtx EmptyCtx v)) in Hstep.
+Qed.
+
+Lemma cstep_pair_r v e e':
+  is_val v ->
+  step e e' →
+  step (expr_pair v e) (expr_pair v e').
+Proof.
+  intros Hv Hstep.
+  apply is_val_inversion in Hv; destruct Hv; subst.
+  by apply cstep_pair_r'.
+Qed.
+
+Lemma sf_deterministic : deterministic expr step.
+Proof.
+  intros e e1 e2 step1 step2.
+  inversion step1; subst.
+  inversion step2; subst.
+Admitted.
+
+#[export]
+  Hint Resolve
+  cstep_app_l
+  cstep_app_r
+  cstep_tapp
+  cstep_fst
+  cstep_snd
+  cstep_pair_l
+  cstep_pair_r : core.

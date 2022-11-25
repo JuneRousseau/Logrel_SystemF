@@ -1,7 +1,8 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
 From Coq Require Import Strings.String.
 From stdpp Require Import gmap list.
-From logical_relation Require Import syntax_systemF opsem_systemF.
+From logical_relation Require Export relation.
+From logical_relation Require Import syntax_systemF opsem_systemF_ctx.
 
 (** Logical relation for type soundness *)
 Implicit Types Δ : tcontext.
@@ -43,7 +44,6 @@ Lemma safe_step (P : expr -> Prop) e e' :
   safe_parametrized P e.
 Proof.
   unfold safe_parametrized.
-  (* induction star step*)
   intros step safe_e' e'' step'.
   generalize dependent e'.
   induction step'; intros.
@@ -53,6 +53,46 @@ Proof.
     subst. clear step.
     by apply safe_e'.
 Qed.
+
+
+Lemma mstep_fill K : forall e e',
+    e ~>* e' ->
+    fill K e ~>* fill K e'.
+Proof.
+  intros. generalize dependent K.
+  induction H; intros.
+  + apply star_refl.
+  + inversion H; subst.
+    rewrite fill_comp.
+    eapply star_step.
+    eapply Step; eauto.
+    specialize (IHstar K).
+    rewrite fill_comp in IHstar.
+    apply IHstar.
+Qed.
+
+  
+Lemma safe_bind K e P Q :
+  safe_parametrized Q e ->
+  (forall v, Q v -> safe_parametrized P (fill K v)) ->
+  safe_parametrized P (fill K e).
+Proof.
+  intros safeQ safeV.
+  intros e' Hstep.
+  unfold safe_parametrized in safeQ.
+  assert (exists e'', e ~>* e'') as [e'' Hstep'].
+  { admit. }
+  pose proof Hstep' as Hstep'2.
+  apply safeQ in Hstep'2.
+    apply (mstep_fill K) in Hstep'.
+  destruct Hstep'2 as [ [Hval HQ] | [e3 Hstep3] ].
+  + apply (safeV e'');auto.
+    apply (mstep_fill K) in Hstep'.
+    admit.
+    admit.
+Admitted.
+
+
 
 
 (** Logical relation for type safety defined using safe parametrized
