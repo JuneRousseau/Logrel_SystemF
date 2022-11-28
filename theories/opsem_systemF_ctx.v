@@ -247,10 +247,16 @@ Proof.
   by apply cstep_pair_r'.
 Qed.
 
+Lemma pure_step_deterministic : deterministic expr pure_step.
+Proof.
+  intros e e1 e2 step1 step2.
+  induction step1;inversion_clear step2;auto.
+Qed.
+
 Lemma sf_deterministic : deterministic expr step.
 Proof.
   intros e e1 e2 step1 step2.
-  inversion step1; subst.
+  inversion step1 ; subst.
   inversion step2; subst.
 Admitted.
 
