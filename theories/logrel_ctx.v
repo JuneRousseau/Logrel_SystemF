@@ -77,33 +77,33 @@ Qed.
     cf Section 5. Predicates on values *)
 (* TODO Note that we are implicitly assuming that the domain of the partial mapping ξ in
 [∆ ⊢ τ ]ξ is always ∆ *)
-Fixpoint safe_lr (Δ : tcontext) (ξ : substitution) (τ : ty) (v : expr) :=
+Fixpoint logrel_safe (Δ : tcontext) (ξ : substitution) (τ : ty) (v : expr) :=
   is_val v /\
  match τ with
- | Ty_Var α => match (ξ !! α) with | None => False | Some P => P v end
+ | Ty_Var α => match (ξ !! α) with | None => True | Some P => P v end
  | Ty_Unit => v = <{ tt }>
  | Ty_Pair t1 t2 =>
      exists e1 e2, is_val e1
               /\ is_val e2
               /\ v = <{ ⟨ e1, e2 ⟩ }>
-              /\ safe_lr Δ ξ t1 e1
-              /\ safe_lr Δ ξ t2 e2
+              /\ logrel_safe Δ ξ t1 e1
+              /\ logrel_safe Δ ξ t2 e2
  | Ty_Arrow t1 t2 =>
      exists x e, v = <{ λ x, e }>
-            /\ (forall v', safe_lr Δ ξ t1 v' -> safe_parametrized (safe_lr Δ ξ t2) ( <{[ x / v'] e}>))
+            /\ (forall v', logrel_safe Δ ξ t1 v' -> safe_parametrized (logrel_safe Δ ξ t2) ( <{[ x / v'] e}>))
  | Ty_Forall α t =>
      exists e, v = <{ Λ e }>
-            /\ forall (P: expr -> Prop), safe_parametrized (safe_lr ({[α]}∪ Δ) (<[α := P]> ξ) t) e
+            /\ forall (P: expr -> Prop), safe_parametrized (logrel_safe ({[α]}∪ Δ) (<[α := P]> ξ) t) e
  end.
 
-Lemma safe_is_val Δ ξ v τ : safe_lr Δ ξ τ v -> is_val v.
+Lemma safe_is_val Δ ξ v τ : logrel_safe Δ ξ τ v -> is_val v.
 Proof.
   induction τ; simpl ; intros; destruct H;auto.
 Qed.
 
 Lemma logrel_subst Δ ξ τ τ' v α :
-  (safe_lr Δ ξ (subst_type α τ' τ) v)
-  <-> (safe_lr ({[α]} ∪ Δ) (<[α := safe_lr Δ ξ τ']> ξ) τ v).
+  (logrel_safe Δ ξ (subst_type α τ' τ) v)
+  <-> (logrel_safe ({[α]} ∪ Δ) (<[α := logrel_safe Δ ξ τ']> ξ) τ v).
 Proof.
   split; intros Hsafe.
   - generalize dependent τ'.
@@ -115,12 +115,12 @@ Proof.
   + split; [by apply safe_is_val in Hsafe|].
     destruct (α =? s)%string eqn:Heq.
     * apply String.eqb_eq in Heq; subst.
-      assert (Heq: <[s:=safe_lr Δ ξ τ']> ξ !! s = Some (safe_lr Δ ξ τ'))
+      assert (Heq: <[s:=logrel_safe Δ ξ τ']> ξ !! s = Some (logrel_safe Δ ξ τ'))
       by apply lookup_insert.
       by rewrite Heq.
     * cbn in Hsafe ; destruct Hsafe as [_ Hsafe].
       apply String.eqb_neq in Heq.
-      assert (Hmap: <[α:=safe_lr Δ ξ τ']> ξ !! s = ξ !! s)
+      assert (Hmap: <[α:=logrel_safe Δ ξ τ']> ξ !! s = ξ !! s)
       by (apply lookup_insert_ne;auto).
       rewrite Hmap.
       apply Hsafe.
@@ -134,6 +134,7 @@ Proof.
     split;auto.
     exists x, e.
     split;auto.
+    set ( ξ' := (<[α:=logrel_safe Δ ξ τ']> ξ) ).
     intros.
     intros e' Hstep.
     admit.
@@ -156,8 +157,8 @@ Admitted.
 
 Lemma logrel_weaken Δ ξ τ v α P :
   not (free α τ) ->
-  ((safe_lr Δ ξ τ v) <->
-  (safe_lr Δ  (<[α := P]> ξ) τ v)).
+  ((logrel_safe Δ ξ τ v) <->
+  (logrel_safe Δ  (<[α := P]> ξ) τ v)).
 Proof.
 
   split; intros Hsafe;
@@ -190,7 +191,7 @@ Fixpoint logrel_seq_list Δ (lΓ : list (string*ty))  ξ (vs : list expr) : Prop
   | nil => List.length vs = 0
   | (x,τ)::Γ' =>
       exists v vs', vs = v::vs'
-               /\ safe_lr Δ ξ τ v
+               /\ logrel_safe Δ ξ τ v
                /\ logrel_seq_list Δ Γ' ξ vs'
   end.
 
@@ -201,7 +202,7 @@ Lemma logrel_seq_weaken Δ Γ ξ P vs α :
 not_free_context α Γ ->
 ( logrel_seq Δ Γ ξ vs
  <->
-  logrel_seq (α::Δ) Γ (<[α := P]>ξ) vs
+  logrel_seq ({[α]} ∪ Δ) Γ (<[α := P]>ξ) vs
 ).
 Proof.
   intros.
@@ -271,7 +272,7 @@ Admitted.
 Theorem fundamental_theorem Δ Γ τ e :
   Δ;Γ ⊢ e ∈ τ -> (forall ξ vs, logrel_seq Δ Γ ξ vs
                          -> safe_parametrized
-                           (safe_lr Δ ξ τ) (subst_term_seq (context_var Γ) vs e)).
+                           (logrel_safe Δ ξ τ) (subst_term_seq (context_var Γ) vs e)).
 Proof.
   induction 1; intros.
   - (* T_Unit *)
@@ -286,6 +287,8 @@ Proof.
     admit.
   - (* T_Prod *)
     (* TODO how to cbn just subst_term_seq ? *)
+    (* eapply (safe_bind (LPairCtx EmptyCtx _ )); econstructor; eauto. *)
+    (* 2:{ cbn in *. inversion H3; cbn.  } *)
     cbn.
     repeat intro.
     pose proof H1 as H1'.
@@ -294,12 +297,13 @@ Proof.
     unfold safe_parametrized in H1,H1'.
     admit.
   - (* T_Fst *)
+
     cbn.
     (* apply IHtyping_judgment in H0. *)
     (* destruct H0 as (is_val_e & e1 & e2 & is_val_e1 & is_val_e2 & v_pair *)
     (*                 & Hsafe_e1 & Hsafe_e2). *)
     (* rewrite v_pair. *)
-    (* backward safe_lr, because fst(e1,e2) -> e1, it suffices to show on e1 *)
+    (* backward logrel_safe, because fst(e1,e2) -> e1, it suffices to show on e1 *)
     admit.
   - (* T_Snd *)
     cbn.
