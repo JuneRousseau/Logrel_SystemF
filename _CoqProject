@@ -1,9 +1,2 @@
 -Q theories/ logical_relation
 theories/relation.v
-
-theories/syntax_systemF.v
-theories/opsem_systemF_ctx.v
-theories/opsem_systemF.v
-
-theories/syntax_stlc.v
-theories/opsem_stlc.v
