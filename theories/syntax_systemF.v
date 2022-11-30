@@ -179,11 +179,9 @@ Fixpoint subst_term_seq (xs : list string) (vs : list expr) (t : expr) : expr :=
   | <{ Λ t1 }> => <{ Λ (subst_term_seq xs vs t1) }>
   end.
 
-(* autosubbst check iris lr *)
-
 (* Use gmap ? My own partial map ? list ? *)
 Definition context := gmap string ty.
-Definition tcontext := list string.
+Definition tcontext := gset string.
 
 (* TODO notation / definition for the empty context and tcontext *)
 
@@ -217,14 +215,6 @@ Inductive free (α : string) : ty -> Prop :=
 | free_arrow2 : forall τ1 τ2, free α τ2  -> free α <{ τ1 -> τ2 }>
 | free_forall : forall τ β, α ≠ β -> free α τ -> free α <{ ∀ β, τ }>.
 
-Definition not_free α (Γ : context) (t : string * ty) : Prop :=
-  let (k,_) := t in
-  match (Γ !! k) with
-  | None => True
-  | Some τ => not (free α τ)
-  end.
-
-(* TODO better way than using gmap_to_list ? *)
 Definition not_free_context (α : string) (Γ : context) :=
 forall x y, Γ !! x = Some y -> not (free α y).
 
@@ -249,7 +239,7 @@ Inductive typing_judgment : tcontext -> context -> expr -> ty -> Prop :=
     Δ;Γ ⊢ e' ∈ τ1 ->
       Δ;Γ ⊢ e e' ∈ τ2
 | T_TLam: forall Δ Γ e α τ,
-  (α :: Δ);Γ ⊢ e ∈ τ ->
+  ({[α]} ∪ Δ);Γ ⊢ e ∈ τ ->
           not_free_context α Γ ->
           Δ;Γ ⊢ Λ e ∈ <{ ∀ α , τ }>
 | T_TApp: forall Δ Γ e α τ1 τ2,
