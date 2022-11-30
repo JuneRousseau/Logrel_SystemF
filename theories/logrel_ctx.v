@@ -54,45 +54,23 @@ Proof.
     by apply safe_e'.
 Qed.
 
-
-Lemma mstep_fill K : forall e e',
-    e ~>* e' ->
-    fill K e ~>* fill K e'.
-Proof.
-  intros. generalize dependent K.
-  induction H; intros.
-  + apply star_refl.
-  + inversion H; subst.
-    rewrite fill_comp.
-    eapply star_step.
-    eapply Step; eauto.
-    specialize (IHstar K).
-    rewrite fill_comp in IHstar.
-    apply IHstar.
-Qed.
-
-  
 Lemma safe_bind K e P Q :
   safe_parametrized Q e ->
   (forall v, Q v -> safe_parametrized P (fill K v)) ->
   safe_parametrized P (fill K e).
 Proof.
-  intros safeQ safeV.
+  intros safeQ safeP.
   intros e' Hstep.
-  unfold safe_parametrized in safeQ.
-  assert (exists e'', e ~>* e'') as [e'' Hstep'].
-  { admit. }
-  pose proof Hstep' as Hstep'2.
-  apply safeQ in Hstep'2.
-    apply (mstep_fill K) in Hstep'.
-  destruct Hstep'2 as [ [Hval HQ] | [e3 Hstep3] ].
-  + apply (safeV e'');auto.
-    apply (mstep_fill K) in Hstep'.
-    admit.
-    admit.
-Admitted.
-
-
+  apply mstep_ectx in Hstep as [(e'' & -> & Hstep)|(v & Hv & Hv1 & Hv2)].
+  - apply safeQ in Hstep.
+    destruct Hstep as [(Hv & HQv)|(e3 & He3)].
+    + apply safeP in HQv; apply HQv. apply star_refl.
+    + right. eexists. eapply step_fill; eauto.
+  - apply safeQ in Hv1.
+    destruct Hv1 as [(_ & HQv)|(e3 & He3)].
+    + apply safeP in HQv; apply HQv. auto.
+    + eapply is_val_stuck in Hv. by apply Hv in He3.
+Qed.
 
 
 (** Logical relation for type safety defined using safe parametrized
@@ -115,10 +93,7 @@ Fixpoint safe_lr (Δ : tcontext) (ξ : substitution) (τ : ty) (v : expr) :=
             /\ (forall v', safe_lr Δ ξ t1 v' -> safe_parametrized (safe_lr Δ ξ t2) ( <{[ x / v'] e}>))
  | Ty_Forall α t =>
      exists e, v = <{ Λ e }>
-            /\ forall (P: expr -> Prop), safe_parametrized (safe_lr (α::Δ) (<[α := P]> ξ) t) e
- (* | Ty_Forall α t => *)
- (*     exists e, v = <{ Λ e }> *)
- (*                /\ ∀ t', safe_parametrized (safe_lr Δ ξ (subst_type α t' t)) e *)
+            /\ forall (P: expr -> Prop), safe_parametrized (safe_lr ({[α]}∪ Δ) (<[α := P]> ξ) t) e
  end.
 
 Lemma safe_is_val Δ ξ v τ : safe_lr Δ ξ τ v -> is_val v.
@@ -128,7 +103,7 @@ Qed.
 
 Lemma logrel_subst Δ ξ τ τ' v α :
   (safe_lr Δ ξ (subst_type α τ' τ) v)
-  <-> (safe_lr (α::Δ) (<[α := safe_lr Δ ξ τ']> ξ) τ v).
+  <-> (safe_lr ({[α]} ∪ Δ) (<[α := safe_lr Δ ξ τ']> ξ) τ v).
 Proof.
   split; intros Hsafe.
   - generalize dependent τ'.
@@ -160,6 +135,7 @@ Proof.
     exists x, e.
     split;auto.
     intros.
+    intros e' Hstep.
     admit.
   + (* poly *)
     destruct (α =? s)%string eqn:Heq ; simpl in Hsafe
@@ -167,10 +143,15 @@ Proof.
     ; split; auto
     ; intros;
       specialize (Hsafe P).
+    replace ( {[s]} ∪ ({[α]} ∪ Δ)) with ({[α]} ∪ ({[s]} ∪ Δ)) by set_solver.
+    intros e' Hstep.
+    apply Hsafe in Hstep.
+    destruct Hstep; [left|right].
     (* I need to be able to swap α and s *)
     admit.
     admit.
-  -
+    admit.
+  - admit.
 Admitted.
 
 Lemma logrel_weaken Δ ξ τ v α P :
