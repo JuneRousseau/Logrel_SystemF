@@ -242,9 +242,9 @@ Inductive typing_judgment : tcontext -> context -> expr -> ty -> Prop :=
   ({[α]} ∪ Δ);Γ ⊢ e ∈ τ ->
           not_free_context α Γ ->
           Δ;Γ ⊢ Λ e ∈ <{ ∀ α , τ }>
-| T_TApp: forall Δ Γ e α τ1 τ2,
-  Δ;Γ ⊢ e ∈ <{ ∀ α , τ1 }> ->
-    Δ;Γ ⊢ e _ ∈ <{ [ α := τ1 ] τ2 }>
+| T_TApp: forall Δ Γ e α τ τ',
+  Δ;Γ ⊢ e ∈ <{ ∀ α , τ }> ->
+    Δ;Γ ⊢ e _ ∈ <{ [ α := τ' ] τ }>
 where "Δ ; Γ '⊢' t '∈' T" := (typing_judgment Δ Γ t T).
 
 Notation "( x )" := x (in custom sf, x at level 99).

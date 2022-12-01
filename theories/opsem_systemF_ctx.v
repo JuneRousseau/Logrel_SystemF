@@ -493,9 +493,21 @@ Proof.
   (*   ; [left; exists e'' |right ; exists v]; firstorder. *)
   inversion H;subst.
   - left. exists e. split;auto;constructor.
-  - apply step_ectx in H0.
+  - fold (mstep b e') in H1.
+    apply step_ectx in H0.
     destruct H0 as [Hv | (e'' & Hstep & ->)].
     + right. exists e; firstorder. constructor.
+    (* + induction H1. *)
+    (*   ++ destruct (is_val_dec e''). *)
+    (*      +++ right. exists e''. *)
+    (*          assert (e ~>* e'') by (econstructor;eauto). *)
+    (*          firstorder. *)
+    (*          apply mstep_fill with (K:= K) in H1. *)
+    (*          admit. *)
+    (*      +++ right. *)
+    (*        admit. *)
+    (*   ++ apply IHstar in H. apply H. *)
+
     + left. exists e; firstorder. 2: constructor.
       (* TODO I finally end up in the same issue than previously
          e --->* ef
