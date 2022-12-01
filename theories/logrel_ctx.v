@@ -254,8 +254,18 @@ Fixpoint logrel_seq_list Δ (lΓ : list (string*ty))  ξ (vs : list expr) : Prop
                /\ logrel_safe Δ ξ τ v
                /\ logrel_seq_list Δ Γ' ξ vs'
   end.
+(* Require Import Coq.Program.Wf. *)
+(* Program Fixpoint logrel_seq Δ Γ ξ (vs : list expr) *)
+(*   {measure (List.length (map_to_list Γ))} : Prop := *)
+(*   forall x τ, Γ !! x = Some τ -> *)
+(*          exists v vs', vs = v::vs' *)
+(*                   /\ logrel_safe Δ ξ τ v *)
+(*                   /\ logrel_seq Δ (delete x Γ) ξ vs'. *)
+(* Next Obligation. *)
+(*   intros. *)
+(*   setoid_rewrite <- map_to_list_delete. *)
 
-Definition logrel_seq Δ Γ ξ (vs : list expr) : Prop :=
+Definition logrel_seq Δ Γ ξ (vs : list expr) :=
   logrel_seq_list Δ (map_to_list Γ) ξ vs.
 
 Lemma logrel_seq_weaken Δ Γ ξ P vs α :
@@ -354,6 +364,23 @@ Qed.
 
 Hint Resolve step_fst step_snd step_app : core.
 
+Lemma var_safe :
+  forall Γ Δ ξ vs x τ,
+  Γ !! x = Some τ ->
+  logrel_seq Δ Γ ξ vs ->
+  safe_parametrized (logrel_safe Δ ξ τ) (replace_var (context_var Γ) vs x x).
+Proof.
+  intros.
+  induction Γ using map_ind.
+  + exfalso.
+    by eapply lookup_empty_is_Some; eexists.
+  + unfold logrel_seq, logrel_seq_list in H0. cbn in H0.
+
+    destruct ( strings.string_eq_dec i x).
+    - admit.
+    - setoid_rewrite lookup_insert_ne in H; auto.
+Admitted.
+
 Theorem fundamental_theorem :
   forall Δ Γ τ e ,
   Δ;Γ ⊢ e ∈ τ -> (forall ξ vs, logrel_seq Δ Γ ξ vs
@@ -366,11 +393,8 @@ Proof.
     simpl in * ; split ; auto.
     by eapply logrel_safe_list_dom.
   - (* T_Var *)
-    induction Γ using map_ind.
-    exfalso. (* from H, error *) admit.
-    (* TODO from H, we know that x \in (context_var \Gamma), and thus we can replace
-       the variable *)
-    admit.
+    cbn.
+    apply var_safe; auto.
   - (* T_Prod *)
     pose proof H1 as H1'.
     apply IHtyping_judgment1 in H1.
