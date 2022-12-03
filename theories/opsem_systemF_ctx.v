@@ -1,6 +1,7 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
 From Coq Require Import Strings.String.
 From stdpp Require Import gmap list.
+Require Import Autosubst.Autosubst.
 From logical_relation Require Import relation syntax_systemF.
 
 
@@ -14,9 +15,9 @@ Inductive pure_step : expr -> expr -> Prop :=
   is_val v1 ->
   is_val v2 ->
   <{ snd ⟨ v1, v2 ⟩ }> -h->  <{ v2 }>
-| step_lam : forall x e v,
+| step_lam : forall e v,
   is_val v ->
-  <{ (λ x, e) v }> -h->  <{ [x / v]e }>
+  <{ (λ _, e) v }> -h-> e.[v/]
 | step_tlam : forall e,
   <{ (Λ e) _ }> -h->  <{ e }>
 where "t '-h->' t'" := (pure_step t t').
@@ -64,51 +65,6 @@ Notation "t '~>*' t'" := (mstep t t') (at level 60).
 Lemma fill_empty e : fill EmptyCtx e = e.
 Proof. done. Qed.
 
-(** Examples *)
-Goal <{ (λ x , x) tt }> ~>* <{tt}>.
-Proof.
-  eapply star_one.
-  eapply (Step _ _ EmptyCtx) ;
-    [ done | done |].
-  apply step_lam.
-  apply v_unit.
-Qed.
-
-Goal <{ fst ((λ x , ( ⟨ (λ y , tt) x , (λ y , x) tt⟩ )) tt)}> ~>* <{tt}>.
-Proof.
-  eapply star_trans with <{ fst ( ⟨ (λ y , tt) tt , (λ y , tt) tt⟩ )}>.
-  eapply star_one.
-  eapply (Step _ _ (FstCtx EmptyCtx) ).
-  1,2: simpl; done.
-  eapply step_lam; apply v_unit.
-
-  eapply star_trans with <{ fst ( ⟨ tt , (λ y , tt) tt⟩ )}>.
-  eapply star_one.
-  eapply (Step _ _ (FstCtx (LPairCtx EmptyCtx _)) ).
-  1,2: simpl; done.
-  eapply (step_lam y <{ tt }> ); apply v_unit.
-
-  eapply star_trans with <{ fst ( ⟨ tt , tt⟩ )}>.
-  eapply star_one.
-  eapply (Step _ _ (FstCtx (RPairCtx EmptyCtx val_unit)) ).
-  1,2: simpl;done.
-  eapply (step_lam y <{ tt }> ); apply v_unit.
-
-  eapply star_one.
-  eapply (Step _ _ EmptyCtx).
-  1,2: simpl; done.
-  apply step_fst; apply v_unit.
-Qed.
-
-Lemma identity : forall v e, e = (of_val v) -> <{ (λ x , x) e }> ~>* <{e}>.
-Proof.
-  intros v e ->.
-  eapply star_one.
-  eapply (Step _ _ EmptyCtx).
-  1,2: done.
-  apply step_lam.
-  apply is_val_of_val.
-Qed.
 
 
 Lemma is_val_stuck : forall e e', is_val e -> not (e ~> e').
@@ -130,7 +86,7 @@ Proof.
       inversion H3; subst.
       eapply (Step _ _ K); auto.
   - destruct K; subst; simpl in *; try discriminate H3.
-    rewrite <- H in H3; inversion H3.
+    rewrite <- H in H2; inversion H2.
     all:try discriminate H.
   - destruct K; subst; simpl in *; try discriminate H3.
     rewrite <- H in H2; inversion H2.
