@@ -135,9 +135,9 @@ Fixpoint logrel_safe (Δ : tcontext) (ξ : substitution) (τ : ty) (v : expr) :=
                  /\ logrel_safe Δ ξ t1 e1
                  /\ logrel_safe Δ ξ t2 e2
     | Ty_Arrow t1 t2 =>
-        exists x e, v = <{ λ x, e }>
+        exists x e, v = <{ λ _, e }>
                /\ (forall v', logrel_safe Δ ξ t1 v' -> safe_parametrized (logrel_safe Δ ξ t2) ( <{[ x / v'] e}>))
-    | Ty_Forall α t =>
+    | Ty_Forall t =>
         exists e, v = <{ Λ e }>
              /\ forall (P: expr -> Prop), safe_parametrized (logrel_safe ({[α]}∪ Δ) (<[α := P]> ξ) t) e
 end.
