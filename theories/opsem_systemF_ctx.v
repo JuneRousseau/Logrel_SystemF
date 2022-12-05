@@ -472,6 +472,34 @@ Proof.
          but I don't know how to prove it, because the reflexive path does not give anything. *)
 Admitted.
 
+
+Lemma step_fst_val v1 v2:
+  is_val v1 ->
+  is_val v2 ->
+  <{ fst (⟨ v1, v2 ⟩) }> ~> v1.
+Proof.
+  intros; eapply (Step _ _ EmptyCtx); eauto.
+Qed.
+
+Lemma step_snd_val v1 v2:
+  is_val v1 ->
+  is_val v2 ->
+  <{ snd (⟨ v1, v2 ⟩) }> ~> v2.
+Proof.
+  intros; eapply (Step _ _ EmptyCtx); eauto.
+Qed.
+
+Lemma step_app_val e v:
+  is_val v ->
+  <{ (λ _, e) v }> ~>  e.[v/].
+Proof.
+  intros; eapply (Step _ _ EmptyCtx); eauto.
+Qed.
+
+#[export]
+Hint Resolve step_fst_val step_snd_val step_app_val : core.
+
+
 #[export]
   Hint Resolve
   cstep_app_l
