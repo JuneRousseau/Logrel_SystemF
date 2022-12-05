@@ -6,12 +6,10 @@ From logical_relation Require Export relation.
 From logical_relation Require Import syntax_systemF opsem_systemF_ctx.
 
 (** Logical relation for type soundness *)
-Implicit Types Δ : tcontext.
 Implicit Types Γ : context.
 Implicit Types τ : ty.
 
-(* TODO gmap ? *)
-Definition substitution := var -> expr -> Prop.
+Definition substitution := list (expr -> Prop).
 Implicit Types ξ : substitution.
 
 (** Safe parametrized by P
@@ -63,50 +61,6 @@ Proof.
   intros safeQ safeP.
   intros e' Hstep.
   unfold safe_parametrized in safeQ.
-  (* inversion Hstep;subst. *)
-  (* - specialize (safeQ e). *)
-  (*   assert (e ~>* e) as Htrivial by econstructor. *)
-  (*   apply safeQ in Htrivial. *)
-  (*   destruct Htrivial as [(Hvale & HQ)| (e'' & Hstep')]. *)
-  (*   + apply safeP in HQ. *)
-  (*     unfold safe_parametrized in HQ. *)
-  (*     apply HQ in Hstep. *)
-  (*     destruct Hstep as [(Hvalv & HQv)| (e'' & Hstep')]. *)
-  (*     ++ left; firstorder. *)
-  (*     ++ right; exists e'';auto. *)
-  (*   + right. exists (fill K e''). by apply step_fill. *)
-  (* - fold (mstep b e') in H0. *)
-  (*   apply step_ectx in H as [Hv|(e'' & Hstep' & Hfill)]. *)
-  (*   + assert (e ~>* e) as Htrivial by econstructor. *)
-  (*     apply safeQ in Htrivial. *)
-  (*     destruct Htrivial as [(Hvale & HQ)| (e'' & Hstep')]. *)
-  (*     ++ apply safeP in HQ. *)
-  (*        unfold safe_parametrized in HQ. *)
-  (*        apply HQ in Hstep. *)
-  (*        destruct Hstep as [(Hvalv & HQv)| (e'' & Hstep')] *)
-  (*        ;[  left; firstorder | right; exists e'';auto]. *)
-  (*     ++ exfalso. *)
-  (*        by apply (is_val_stuck e e'') in Hv. *)
-  (*   + subst. *)
-  (*     assert (e ~>* e'') as Hstep2 by (econstructor;eauto). *)
-  (*     apply safeQ in Hstep2. *)
-  (*     destruct Hstep2 as [(Hvale'' & HQe'')| (e3 & Hstep3)]. *)
-  (*     ++ apply safeP in HQe''. *)
-  (*        unfold safe_parametrized in HQe''. *)
-  (*        apply HQe'' in H0. *)
-  (*        destruct H0 as [(Hvale' & HPe')| (e4 & Hstep4)]; firstorder. *)
-  (*     ++ *)
-  (*     assert (e ~>* e'') as Hstep4 by (econstructor;eauto). *)
-  (*     apply safeQ in Hstep4. *)
-  (*     destruct Hstep4 as [(Hvale'' & HQe'')| (e5 & Hstep5)]. *)
-  (*     +++ exfalso. by apply (is_val_stuck e'' e3) in Hvale''. *)
-  (*     +++ *)
-  (*       apply safeP in HQe''. *)
-  (*         unfold safe_parametrized in HQe''. *)
-  (*         apply HQe'' in H0. *)
-  (*         destruct H0 as [(Hvale' & HPe')| (e4 & Hstep4)]; firstorder. *)
-  (*       exfalso. *)
-  (*        by apply (is_val_stuck e e'') in Hv. *)
   apply mstep_ectx in Hstep as [(e'' & -> & Hstep)|(v & Hv & Hv1 & Hv2)].
   - apply safeQ in Hstep.
     destruct Hstep as [(Hv & HQv)|(e3 & He3)].
@@ -120,143 +74,123 @@ Qed.
 
 (** Logical relation for type safety defined using safe parametrized
     cf Section 5. Predicates on values *)
-(* TODO Note that we are implicitly assuming that the domain of the partial mapping ξ in
-[∆ ⊢ τ ]ξ is always ∆ *)
-Fixpoint logrel_safe (Δ : tcontext) (ξ : substitution) (τ : ty) (v : expr) :=
-  dom ξ = Δ /\
-    is_val v /\
-    match τ with
-    | Ty_Var α => match (ξ !! α) with | None => False | Some P => P v end
-    | Ty_Unit => v = <{ tt }>
+
+(** ξ is a substitution, ie. it is a function that maps a variable to
+    an expression property. *)
+Fixpoint logrel_safe (ξ : substitution) (τ : ty) (v : expr) :=
+  match τ with
+  | Ty_Var α => is_val v
+               /\ match (get ξ α) with
+                 | None => True
+                 | Some P => P v
+                 end
+  | Ty_Unit => v = <{ tt }>
     | Ty_Pair t1 t2 =>
         exists e1 e2, is_val e1
                  /\ is_val e2
                  /\ v = <{ ⟨ e1, e2 ⟩ }>
-                 /\ logrel_safe Δ ξ t1 e1
-                 /\ logrel_safe Δ ξ t2 e2
+                 /\ logrel_safe ξ t1 e1
+                 /\ logrel_safe ξ t2 e2
     | Ty_Arrow t1 t2 =>
-        exists x e, v = <{ λ _, e }>
-               /\ (forall v', logrel_safe Δ ξ t1 v' ->
-                        safe_parametrized (logrel_safe Δ ξ t2) ( <{e v'}>))
+        exists e, v = <{ λ _, e }>
+               /\ (forall v', logrel_safe ξ t1 v' ->
+                        safe_parametrized (logrel_safe ξ t2) (<{e v'}>))
     | Ty_Forall t =>
         exists e, v = <{ Λ e }>
-             /\ forall i (P: expr -> Prop), safe_parametrized (logrel_safe (P::Δ) (P .: ξ) t) e
+             /\ forall (P: expr -> Prop), safe_parametrized (logrel_safe (P :: ξ) t) e
 end.
 
-interpVal T x (i .: ρ)) e'.|[T'/]
-                          
-Lemma safe_is_val Δ ξ v τ : logrel_safe Δ ξ τ v -> is_val v.
+Lemma safe_is_val ξ v τ : logrel_safe ξ τ v -> is_val v.
 Proof.
-  induction τ; simpl ; intros; destruct H as (?&?&?);auto.
+  induction τ; simpl ; intros; try destruct H as (?&?);auto.
+  - subst; constructor.
+  - destruct H as (?&?&?&?&?); subst; by constructor.
+  - destruct H as (?&?); subst; by constructor.
+  - destruct H as (?&?); subst; by constructor.
 Qed.
 
-Lemma safe_domain  Δ ξ v τ : logrel_safe Δ ξ τ v -> dom ξ = Δ.
-  induction τ; simpl ; intros; destruct H as (?&?&?);auto.
-Qed.
-
-Lemma logrel_subst Δ ξ τ τ' v α :
-  (logrel_safe Δ ξ (subst_type α τ' τ) v)
-  <-> (logrel_safe ({[α]} ∪ Δ) (<[α := logrel_safe Δ ξ τ']> ξ) τ v).
+Lemma logrel_subst ξ τ τ' v :
+  (logrel_safe ξ τ.[τ'/] v )
+  <-> (logrel_safe ((logrel_safe ξ τ')::ξ) τ v).
 Proof.
-  split; intros Hsafe.
-  - generalize dependent τ'.
-    generalize dependent α.
-    generalize dependent v.
-    generalize dependent ξ.
-    generalize dependent Δ.
-    induction τ; intros * Hsafe; simpl in *; auto.
-  + split; [apply safe_domain in Hsafe; set_solver|].
-    split; [by apply safe_is_val in Hsafe|].
-    destruct (α =? s)%string eqn:Heq.
-    * apply String.eqb_eq in Heq; subst.
-      assert (Heq: <[s:=logrel_safe Δ ξ τ']> ξ !! s = Some (logrel_safe Δ ξ τ'))
-      by apply lookup_insert.
-      by rewrite Heq.
-    * cbn in Hsafe ; destruct Hsafe as [_ Hsafe].
-      apply String.eqb_neq in Heq.
-      assert (Hmap: <[α:=logrel_safe Δ ξ τ']> ξ !! s = ξ !! s)
-      by (apply lookup_insert_ne;auto).
-      rewrite Hmap.
-      apply Hsafe.
-  + destruct Hsafe as (<- & Hval & ->).
-    firstorder set_solver.
+  generalize dependent τ'.
+  generalize dependent v.
+  generalize dependent ξ.
+  induction τ; intros *.
+  + (* var *)
+    rename v into x.
+    rename v0 into v.
+    admit.
+  + (* unit *)
+    auto; tauto.
   + (* pair *)
-    destruct Hsafe as (Hdom & Hval & v1 & v2 & Hval1 & Hval2 & -> & Hsafe1 & Hsafe2).
-    split;auto;[set_solver|split;auto].
-    exists v1, v2.
-    repeat(split;auto).
+    split; intro Hsafe
+    ; destruct Hsafe as (v1 & v2 & Hval1 & Hval2 & -> & Hsafe1 & Hsafe2)
+    ; exists v1, v2
+    ; repeat(split;auto).
+    all: (try by apply IHτ1).
+    all: (try by apply IHτ2).
   + (* lambda *)
-    destruct Hsafe as (Hdom & Hval & x & e & -> & Hsafe).
-    split;auto;[set_solver|split;auto].
-    exists x, e.
-    split;auto.
-    set ( ξ' := (<[α:=logrel_safe Δ ξ τ']> ξ) ).
-    set ( Δ' := ({[α]} ∪ Δ)).
-    intros.
-    intros e' Hstep.
-    admit.
+    split; intros [? Hsafe];simpl
+    ; destruct Hsafe as (-> & Hsafe)
+    ; exists x; split; auto;intros.
+    all: eapply safe_mono;[intros|eapply Hsafe].
+    all: (try by apply IHτ1).
+    all: (try by apply IHτ2).
   + (* poly *)
-    destruct (α =? s)%string eqn:Heq ; simpl in Hsafe
-    ;destruct Hsafe as (Hdom & Hval & e & Hv & Hsafe);
-      split ; try set_solver;split;auto
-    ; exists e ; split; auto ; intros; specialize (Hsafe P)
-    ; replace ( {[s]} ∪ ({[α]} ∪ Δ)) with ({[α]} ∪ ({[s]} ∪ Δ)) by set_solver.
-    intros e' Hstep.
-    apply Hsafe in Hstep.
-    destruct Hstep; [left|right].
-    destruct H as [Hvale' Hlogrel].
-    split;auto.
+    split; intros [? Hsafe];simpl
+    ; destruct Hsafe as (-> & Hsafe)
+    ; exists x; split; auto;intros.
+    all: eapply safe_mono;[intros|eapply (Hsafe P)].
     admit.
-    auto.
     admit.
-  - admit.
 Admitted.
 
-Lemma logrel_weaken Δ ξ τ v α P :
-  not (free α τ) ->
-  ((logrel_safe Δ ξ τ v) <->
-  (logrel_safe Δ  (<[α := P]> ξ) τ v)).
-Proof.
-  split; intros Hsafe;
-  generalize dependent v;
-  induction τ; intros; simpl in *;
-  destruct Hsafe as (Hdom & Hval & Hsafe).
-  - (* Var *)
-    split; [|split]; auto.
-    destruct (decide (α = s)%string); subst.
-    exfalso; apply H; apply free_var.
-    admit.
-    unfold not in H.
-    destruct (decide (α = s)%string); subst.
-    + (* \alpha = s --> contradiction with free *)
-      exfalso; apply H; apply free_var.
-    + replace (<[α:=P]> ξ !! s) with (ξ !! s)
-    by (symmetry ; apply lookup_insert_ne;auto).
-    auto.
-  - split;[admit|];auto.
-  - split;[admit|split];auto.
-    destruct Hsafe as (v1 & v2 & Hv1 & Hv2 & Hv& Hsafe1 & Hsafe2).
-    exists v1, v2.
-    repeat(split;auto).
-    apply IHτ1;auto; intro; apply H; by apply free_pair1.
-    apply IHτ2;auto; intro; apply H; by apply free_pair2.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-Admitted.
+(* Lemma logrel_weaken ξ τ v P : *)
+(*   not (free α τ) -> *)
+(*   ((logrel_safe Δ ξ τ v) <-> *)
+(*   (logrel_safe Δ  (<[α := P]> ξ) τ v)). *)
+(* Proof. *)
+(*   split; intros Hsafe; *)
+(*   generalize dependent v; *)
+(*   induction τ; intros; simpl in *; *)
+(*   destruct Hsafe as (Hdom & Hval & Hsafe). *)
+(*   - (* Var *) *)
+(*     split; [|split]; auto. *)
+(*     destruct (decide (α = s)%string); subst. *)
+(*     exfalso; apply H; apply free_var. *)
+(*     admit. *)
+(*     unfold not in H. *)
+(*     destruct (decide (α = s)%string); subst. *)
+(*     + (* \alpha = s --> contradiction with free *) *)
+(*       exfalso; apply H; apply free_var. *)
+(*     + replace (<[α:=P]> ξ !! s) with (ξ !! s) *)
+(*     by (symmetry ; apply lookup_insert_ne;auto). *)
+(*     auto. *)
+(*   - split;[admit|];auto. *)
+(*   - split;[admit|split];auto. *)
+(*     destruct Hsafe as (v1 & v2 & Hv1 & Hv2 & Hv& Hsafe1 & Hsafe2). *)
+(*     exists v1, v2. *)
+(*     repeat(split;auto). *)
+(*     apply IHτ1;auto; intro; apply H; by apply free_pair1. *)
+(*     apply IHτ2;auto; intro; apply H; by apply free_pair2. *)
+(*   - admit. *)
+(*   - admit. *)
+(*   - admit. *)
+(*   - admit. *)
+(*   - admit. *)
+(*   - admit. *)
+(* Admitted. *)
 
 (* TODO better way to define the sequence ? *)
-Fixpoint logrel_seq_list Δ (lΓ : list (string*ty))  ξ (vs : list expr) : Prop :=
-  match lΓ with
-  | nil => List.length vs = 0
-  | (x,τ)::Γ' =>
-      exists v vs', vs = v::vs'
-               /\ logrel_safe Δ ξ τ v
-               /\ logrel_seq_list Δ Γ' ξ vs'
-  end.
+(* Fixpoint logrel_seq_list Δ (lΓ : list (string*ty))  ξ (vs : list expr) : Prop := *)
+(*   match lΓ with *)
+(*   | nil => List.length vs = 0 *)
+(*   | (x,τ)::Γ' => *)
+(*       exists v vs', vs = v::vs' *)
+(*                /\ logrel_safe Δ ξ τ v *)
+(*                /\ logrel_seq_list Δ Γ' ξ vs' *)
+(*   end. *)
 (* Require Import Coq.Program.Wf. *)
 (* Program Fixpoint logrel_seq Δ Γ ξ (vs : list expr) *)
 (*   {measure (List.length (map_to_list Γ))} : Prop := *)
@@ -268,127 +202,101 @@ Fixpoint logrel_seq_list Δ (lΓ : list (string*ty))  ξ (vs : list expr) : Prop
 (*   intros. *)
 (*   setoid_rewrite <- map_to_list_delete. *)
 
-Definition logrel_seq Δ Γ ξ (vs : list expr) :=
-  logrel_seq_list Δ (map_to_list Γ) ξ vs.
+(* Definition logrel_seq Δ Γ ξ (vs : list expr) := *)
+(*   logrel_seq_list Δ (map_to_list Γ) ξ vs. *)
 
-Lemma logrel_seq_weaken Δ Γ ξ P vs α :
-not_free_context α Γ ->
-( logrel_seq Δ Γ ξ vs
- <->
-  logrel_seq ({[α]} ∪ Δ) Γ (<[α := P]>ξ) vs
-).
-Proof.
-  intros.
-  split; intros.
-  - generalize dependent Δ.
-    generalize dependent ξ.
-    generalize dependent α.
-    generalize dependent P.
-    generalize dependent vs.
-    induction Γ using map_ind
-    ; intros
-    ; unfold logrel_seq in *.
-    + setoid_rewrite map_to_list_empty in H0.
-      setoid_rewrite map_to_list_empty.
-      by cbn in *.
-    + admit.
-      (* setoid_rewrite map_to_list_insert. *)
-      (* apply IHΓ. *)
-Admitted.
+(* Lemma logrel_seq_weaken Δ Γ ξ P vs α : *)
+(* not_free_context α Γ -> *)
+(* ( logrel_seq Δ Γ ξ vs *)
+(*  <-> *)
+(*   logrel_seq ({[α]} ∪ Δ) Γ (<[α := P]>ξ) vs *)
+(* ). *)
+(* Proof. *)
+(*   intros. *)
+(*   split; intros. *)
+(*   - generalize dependent Δ. *)
+(*     generalize dependent ξ. *)
+(*     generalize dependent α. *)
+(*     generalize dependent P. *)
+(*     generalize dependent vs. *)
+(*     induction Γ using map_ind *)
+(*     ; intros *)
+(*     ; unfold logrel_seq in *. *)
+(*     + setoid_rewrite map_to_list_empty in H0. *)
+(*       setoid_rewrite map_to_list_empty. *)
+(*       by cbn in *. *)
+(*     + admit. *)
+(*       (* setoid_rewrite map_to_list_insert. *) *)
+(*       (* apply IHΓ. *) *)
+(* Admitted. *)
 
 
-Definition context_var Γ : list string :=
-  map (fun x => match x with (x1,x2) => x1 end) (gmap_to_list Γ).
-  (* (gmap_to_list Γ).*1 . *)
+(* Definition context_var Γ : list string := *)
+(*   map (fun x => match x with (x1,x2) => x1 end) (gmap_to_list Γ). *)
+(*   (* (gmap_to_list Γ).*1 . *) *)
 
-Lemma subst_term_seq_insert e :
-  forall Γ vs x τ v,
-  (subst_term_seq (context_var (<[x:=τ]> Γ)) (v :: vs) e) =
-    subst_term x v (subst_term_seq (context_var Γ) (vs) e).
-Proof.
-  induction e; intros ; auto; cbn.
-  - (* var *)
-    induction Γ using map_ind.
-    + replace (context_var (<[x:=τ]> ∅)) with [x].
-      replace (context_var ∅) with ([] : list string).
-      reflexivity.
-      unfold context_var.
-      (* rewrite map_to_list_empty. *)
-      admit.
-      admit.
-    + admit.
-  - (* pair *)
-    by rewrite IHe1, IHe2.
-  - (* fst *)
-    by rewrite IHe.
-  - (* snd *)
-    by rewrite IHe.
-  - (* app *)
-    by rewrite IHe1, IHe2.
-  - (* abs *)
-    rewrite IHe.
-    (* TODO do I miss an hypothesis about Γ ? *)
-    (* destruct (decide (s = x)); subst. *)
-    (* + (* s = x*) *)
-    admit.
+(* Lemma subst_term_seq_insert e : *)
+(*   forall Γ vs x τ v, *)
+(*   (subst_term_seq (context_var (<[x:=τ]> Γ)) (v :: vs) e) = *)
+(*     subst_term x v (subst_term_seq (context_var Γ) (vs) e). *)
+(* Proof. *)
+(*   induction e; intros ; auto; cbn. *)
+(*   - (* var *) *)
+(*     induction Γ using map_ind. *)
+(*     + replace (context_var (<[x:=τ]> ∅)) with [x]. *)
+(*       replace (context_var ∅) with ([] : list string). *)
+(*       reflexivity. *)
+(*       unfold context_var. *)
+(*       (* rewrite map_to_list_empty. *) *)
+(*       admit. *)
+(*       admit. *)
+(*     + admit. *)
+(*   - (* pair *) *)
+(*     by rewrite IHe1, IHe2. *)
+(*   - (* fst *) *)
+(*     by rewrite IHe. *)
+(*   - (* snd *) *)
+(*     by rewrite IHe. *)
+(*   - (* app *) *)
+(*     by rewrite IHe1, IHe2. *)
+(*   - (* abs *) *)
+(*     rewrite IHe. *)
+(*     (* TODO do I miss an hypothesis about Γ ? *) *)
+(*     (* destruct (decide (s = x)); subst. *) *)
+(*     (* + (* s = x*) *) *)
+(*     admit. *)
 
-  - (* tapp *)
-    by rewrite IHe.
-  - (* tabs *)
-    by rewrite IHe.
-Admitted.
+(*   - (* tapp *) *)
+(*     by rewrite IHe. *)
+(*   - (* tabs *) *)
+(*     by rewrite IHe. *)
+(* Admitted. *)
 
-Lemma logrel_safe_list_dom: forall Δ Γ ξ vs,
-  logrel_seq Δ Γ ξ vs -> dom ξ = Δ.
-Admitted.
+(* Lemma logrel_safe_list_dom: forall Δ Γ ξ vs, *)
+(*   logrel_seq Δ Γ ξ vs -> dom ξ = Δ. *)
+(* Admitted. *)
 
-Lemma step_fst v1 v2:
-  is_val v1 ->
-  is_val v2 ->
-  <{ fst (⟨ v1, v2 ⟩) }> ~> v1.
-Proof.
-  intros; eapply (Step _ _ EmptyCtx); eauto.
-Qed.
+(* Lemma var_safe : *)
+(*   forall Γ Δ ξ vs x τ, *)
+(*   Γ !! x = Some τ -> *)
+(*   logrel_seq Δ Γ ξ vs -> *)
+(*   safe_parametrized (logrel_safe Δ ξ τ) (replace_var (context_var Γ) vs x x). *)
+(* Proof. *)
+(*   intros. *)
+(*   induction Γ using map_ind. *)
+(*   + exfalso. *)
+(*     by eapply lookup_empty_is_Some; eexists. *)
+(*   + unfold logrel_seq, logrel_seq_list in H0. cbn in H0. *)
 
-Lemma step_snd v1 v2:
-  is_val v1 ->
-  is_val v2 ->
-  <{ snd (⟨ v1, v2 ⟩) }> ~> v2.
-Proof.
-  intros; eapply (Step _ _ EmptyCtx); eauto.
-Qed.
-
-Lemma step_app x e v:
-  is_val v ->
-  <{ (λ x, e) v }> ~>  <{ [x / v]e }>.
-Proof.
-  intros; eapply (Step _ _ EmptyCtx); eauto.
-Qed.
-
-Hint Resolve step_fst step_snd step_app : core.
-
-Lemma var_safe :
-  forall Γ Δ ξ vs x τ,
-  Γ !! x = Some τ ->
-  logrel_seq Δ Γ ξ vs ->
-  safe_parametrized (logrel_safe Δ ξ τ) (replace_var (context_var Γ) vs x x).
-Proof.
-  intros.
-  induction Γ using map_ind.
-  + exfalso.
-    by eapply lookup_empty_is_Some; eexists.
-  + unfold logrel_seq, logrel_seq_list in H0. cbn in H0.
-
-    destruct ( strings.string_eq_dec i x).
-    - admit.
-    - setoid_rewrite lookup_insert_ne in H; auto.
-Admitted.
+(*     destruct ( strings.string_eq_dec i x). *)
+(*     - admit. *)
+(*     - setoid_rewrite lookup_insert_ne in H; auto. *)
+(* Admitted. *)
 
 Theorem fundamental_theorem :
-  forall Δ Γ τ e ,
-  Δ;Γ ⊢ e ∈ τ -> (forall ξ vs, logrel_seq Δ Γ ξ vs
-                         -> safe_parametrized
-                           (logrel_safe Δ ξ τ) (subst_term_seq (context_var Γ) vs e)).
+  forall Γ τ e ,
+  Γ ⊢ e ∈ τ ->
+  (forall ξ vs, logrel_safe Γ ξ vs -> safe_parametrized (logrel_safe ξ τ) e.[vs/]).
 Proof.
   induction 1; intros.
   - (* T_Unit *)

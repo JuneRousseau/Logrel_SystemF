@@ -122,61 +122,57 @@ Notation "'Λ' e" :=
 
 
 (* Use gmap ? My own partial map ? list ? *)
-Definition context := gmap var ty.
-(* Definition tcontext := gset var. *)
-
-(* Inductive appears_free_in (x : var) : expr → Prop := *)
-(* | afi_var : appears_free_in x (EVar x) *)
-(* | afi_pair1 : ∀ e1 e2, *)
-(*   appears_free_in x e1 → *)
-(*   appears_free_in x (EPair e1 e2) *)
-(* | afi_pair2 : ∀ e1 e2, *)
-(*   appears_free_in x e2 → *)
-(*   appears_free_in x (EPair e1 e2) *)
-(* | afi_app1 : ∀ e1 e2, *)
-(*   appears_free_in x e1 → *)
-(*   appears_free_in x (EApp e1 e2) *)
-(* | afi_app2 : ∀ e1 e2, *)
-(*   appears_free_in x e2 → *)
-(*   appears_free_in x (EApp e1 e2) *)
-(* | afi_abs : ∀ y e1, *)
-(*   y ≠ x → *)
-(*   appears_free_in x e1 → *)
-(*   appears_free_in x (EAbs y e1). *)
-(*   <{ λ y, t1}>. *)
-
-Reserved Notation "Δ '⊢' t '∈' T"
-  (at level 101, t custom sf, T custom sf at level 0).
-
 Require Import List.
-Definition tcontext := list ty.
-Inductive typing_judgment : tcontext -> expr -> ty -> Prop :=
-| T_Unit: forall Δ, Δ ⊢ tt ∈ ()
-| T_Var: forall Δ x, x < length Δ -> Δ ⊢ (expr_var x) ∈ (nth x Δ (ids 0))
-| T_Prod: forall Δ e1 τ1 e2 τ2,
-  Δ ⊢ e1 ∈ τ1 ->
-    Δ ⊢ e2 ∈ τ2 ->
-      Δ ⊢ ⟨e1, e2⟩ ∈ <{ τ1 × τ2 }>
-| T_Fst: forall Δ e τ1 τ2,
-  Δ ⊢ e ∈ <{ τ1 × τ2 }> ->
-    Δ ⊢ fst e ∈ τ1
-| T_Snd: forall Δ e τ1 τ2,
-  Δ ⊢ e ∈ <{ τ1 × τ2 }> ->
-    Δ ⊢ snd e ∈ τ2
-| T_Lam: forall Δ e τ1 τ2,
-  (τ1 :: Δ) ⊢ e ∈ τ2 ->
-    Δ ⊢ (expr_lam e) ∈ <{ τ1 -> τ2 }>
-| T_App: forall Δ f e τ1 τ2,
-  Δ ⊢ f ∈ <{ τ1 -> τ2 }> ->
-    Δ ⊢ e ∈ τ1 ->
-      Δ ⊢ f e ∈ τ2
-| T_TLam: forall Δ e τ,
-  Δ..[ren (+1)] ⊢ e ∈ τ ->
-          Δ ⊢ Λ e ∈ <{ ∀ _ , τ }>
-| T_TApp: forall Δ e τ τ',
-  Δ ⊢ e ∈ <{ ∀ _ , τ }> ->
-  typing_judgment Δ (expr_tapp e) τ.[τ'/]
-where "Δ '⊢' e '∈' τ" := (typing_judgment Δ e τ).
+Definition get {T} (Gamma : list T) (n : var) : option T :=
+  nth_error Gamma n.
+Definition context := list ty.
+
+(** The typing context Γ is an ordered list of type,
+    where the nth element is the type of (expr_var n) *)
+(** There is no context of type variable Δ because they are managed by
+    (ty_var n) where n is an autosubst variable. *)
+
+Reserved Notation "Γ '⊢' t '∈' T"
+  (at level 101, t custom sf, T custom sf at level 0).
+Inductive typing_judgment : context -> expr -> ty -> Prop :=
+| T_Unit: forall Γ , Γ ⊢ tt ∈ ()
+(* A variable is well-typed if it exists a type in the typing context Γ *)
+| T_Var: forall Γ x τ, (get Γ x) = Some τ -> Γ ⊢ (expr_var x) ∈ τ
+| T_Prod: forall Γ e1 τ1 e2 τ2,
+  Γ ⊢ e1 ∈ τ1
+  -> Γ ⊢ e2 ∈ τ2
+  -> Γ ⊢ ⟨e1, e2⟩ ∈ <{ τ1 × τ2 }>
+| T_Fst: forall Γ e τ1 τ2,
+  Γ ⊢ e ∈ <{ τ1 × τ2 }>
+  -> Γ ⊢ fst e ∈ τ1
+| T_Snd: forall Γ e τ1 τ2,
+  Γ ⊢ e ∈ <{ τ1 × τ2 }>
+  -> Γ ⊢ snd e ∈ τ2
+(* A lambda abstraction (λx.e) is well-typed if, by adding the type of the
+   argument in the typing context, the expression e is well-typed.
+   The binding is managed by the order in the typing list.
+   Indeed, 'x' will be transformed to '0', and all occurences of (expr_var 0)
+   will represents the binding to this 'x'. *)
+| T_Lam: forall Γ e τ1 τ2,
+  (τ1 :: Γ) ⊢ e ∈ τ2
+  -> Γ ⊢ (expr_lam e) ∈ <{ τ1 -> τ2 }>
+| T_App: forall Γ f e τ1 τ2,
+  Γ ⊢ f ∈ <{ τ1 -> τ2 }>
+  -> Γ ⊢ e ∈ τ1
+  -> Γ ⊢ f e ∈ τ2
+(* A type-lambda abstraction {(Λ e) : ∀ α, τ} is well-typed if, by adding the
+   type variable in the typing variable context, the term e is of type τ.
+   With the de Bruijn indices, adding a new variable in the typing variable
+   context means increment all the indices of the type variable by 1.
+   Thus, in our typing context, we rename (ie. increment) all the type
+   variable. *)
+| T_TLam: forall Γ e τ,
+  (map (rename (+1)) Γ) ⊢ e ∈ τ
+  -> Γ ⊢ Λ e ∈ <{ ∀ _ , τ }>
+| T_TApp: forall Γ e τ τ',
+  Γ ⊢ e ∈ <{ ∀ _ , τ }>
+  -> typing_judgment Γ (expr_tapp e) τ.[τ'/]
+where "Γ '⊢' e '∈' τ" := (typing_judgment Γ e τ).
 
 Notation "( x )" := x (in custom sf, x at level 99).
 
