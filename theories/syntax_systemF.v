@@ -103,6 +103,7 @@ Notation "S × T" := (Ty_Pair S T) (in custom sf at level 50, right associativit
 Notation "'()'" := Ty_Unit (in custom sf at level 0).
 Notation "∀ '_' , T" := (Ty_Forall T) (in custom sf at level 50).
 Coercion expr_var : var >-> expr.
+Notation "'#' n" := (Ty_Var n) (in custom sf at level 50).
 Notation "'tt'" := expr_unit (in custom sf at level 0).
 Notation "'⟨' e1 ',' e2 '⟩'" := (expr_pair e1 e2) (in custom sf at level 90,
                                       e1 at level 99,

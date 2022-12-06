@@ -115,24 +115,21 @@ Proof.
   - destruct H as (?&?); subst; by constructor.
 Qed.
 
-Lemma logrel_subst ξ τ τ' v :
-  (logrel_safe ξ τ.[τ'/] v )
-  <-> (logrel_safe ((logrel_safe ξ τ')::ξ) τ v).
+Lemma logrel_subst_generalized τ :
+  forall ξ1 ξ2 τ' v,
+  (logrel_safe (ξ1++ξ2) τ.[upn (length ξ1) (τ'.: ids)] v)
+  <-> (logrel_safe (ξ1 ++ (logrel_safe ξ2 τ')::ξ2) τ v).
 Proof.
-  generalize dependent τ'.
-  generalize dependent v.
-  generalize dependent ξ.
   induction τ; intros *.
   + (* var *)
     rename v into x.
     rename v0 into v.
-    split
-    ; intros Hsafe
-    ; cbn in *
-    ; induction x;cbn in *;firstorder
-    ; by eapply safe_is_val.
+    asimpl.
+    (* revert x ξ1 ξ2 τ' v. *)
+    (* induction ξ1;intros;cbn. *)
+    admit.
   + (* unit *)
-    auto; tauto.
+    auto.
   + (* pair *)
     split; intro Hsafe
     ; destruct Hsafe as (v1 & v2 & Hval1 & Hval2 & -> & Hsafe1 & Hsafe2)
@@ -152,11 +149,18 @@ Proof.
     ; destruct Hsafe as (-> & Hsafe)
     ; exists x; split;auto;intros.
     all: eapply safe_mono;[intros|eapply (Hsafe P)].
-    specialize (IHτ (P::ξ) e).
-    admit.
-    specialize (IHτ (P::ξ) e).
-    admit.
+    all: try by eapply (IHτ (_::_)).
 Admitted.
+
+
+(* Cannot be done naively: the induction hypothesis for type lambda abstraction
+   is not strong enough ! *)
+Lemma logrel_subst ξ τ τ' v :
+  (logrel_safe ξ τ.[τ'/] v )
+  <-> (logrel_safe ((logrel_safe ξ τ')::ξ) τ v).
+Proof.
+  apply logrel_subst_generalized with (ξ1 := nil).
+Qed.
 
 Lemma logrel_context_cons_inv Γ τ ξ σ :
  logrel_context (τ :: Γ) ξ σ ->
@@ -182,50 +186,61 @@ Proof.
   - simpl; apply Hcontext.
 Qed.
 
+Lemma logrel_safe_incr_generalized τ :
+  forall ξ1 ξ2 e P,
+  logrel_safe (ξ1 ++ ξ2) τ e ↔
+  logrel_safe (ξ1 ++ P :: ξ2) (τ.[upn (length ξ1) (ren (+ 1))]) e.
+Proof.
+  induction τ;intros.
+  - (* Var *)
+  (*   split;intros H; destruct H; split;auto. *)
+  (* - (* Unit *) by cbn in *. *)
+  (* - (* Pair *) cbn in *. *)
+  (*   split;intros H *)
+  (*   ; destruct H as (e1&e2&Hval1&Hval2&->&Hsafe1&Hsafe2) *)
+  (*   ; eapply IHτ1 in Hsafe1 *)
+  (*   ; eapply IHτ2 in Hsafe2 *)
+  (*   ; exists e1, e2; repeat(split;eauto). *)
+  (* - (* Arrow *) *)
+  (*   cbn in *. *)
+  (*   split; intros H *)
+  (*   ; destruct H as (e'& ->& Hsafe) *)
+  (*   ; exists e'; split;auto *)
+  (*   ; intros *)
+  (*   ; eapply safe_mono *)
+  (*   ; match goal with *)
+  (*     | h: _ |- safe_parametrized _ _ => eapply Hsafe *)
+  (*     | h: _ |- _ => idtac *)
+  (*   end *)
+  (*   ; intros *)
+  (*   ; try (by eapply IHτ1) *)
+  (*   ; try (by eapply IHτ2). *)
+  (* - (* Forall *) *)
+  (*   cbn in *. *)
+  (*   split; intros H *)
+  (*   ; destruct H as (e'&->&Hsafe) ; exists e' *)
+  (*   ; split;auto *)
+  (*   ; intros. *)
+  (*   + eapply safe_mono. *)
+  (*     2: apply Hsafe. *)
+  (*     intros; eapply (IHτ (P::ξ) e P0) in H0. *)
+  (*     admit. *)
+  (*   + eapply safe_mono. *)
+  (*     2: apply Hsafe. *)
+  (*     intros. eapply IHτ. *)
+  (*     admit. *)
+Admitted.
+
 Lemma logrel_safe_incr :
   forall τ ξ e P,
   logrel_safe ξ τ e <->
   logrel_safe (P :: ξ) (rename (+1) τ) e.
 Proof.
-  intro τ; induction τ;intros.
-  - (* Var *)
-    split;intros H; destruct H; split;auto.
-  - (* Unit *) by cbn in *.
-  - (* Pair *) cbn in *.
-    split;intros H
-    ; destruct H as (e1&e2&Hval1&Hval2&->&Hsafe1&Hsafe2)
-    ; eapply IHτ1 in Hsafe1
-    ; eapply IHτ2 in Hsafe2
-    ; exists e1, e2; repeat(split;eauto).
-  - (* Arrow *)
-    cbn in *.
-    split; intros H
-    ; destruct H as (e'& ->& Hsafe)
-    ; exists e'; split;auto
-    ; intros
-    ; eapply safe_mono
-    ; match goal with
-      | h: _ |- safe_parametrized _ _ => eapply Hsafe
-      | h: _ |- _ => idtac
-    end
-    ; intros
-    ; try (by eapply IHτ1)
-    ; try (by eapply IHτ2).
-  - (* Forall *)
-    cbn in *.
-    split; intros H
-    ; destruct H as (e'&->&Hsafe) ; exists e'
-    ; split;auto
-    ; intros.
-    + eapply safe_mono.
-      2: apply Hsafe.
-      intros; eapply (IHτ (P::ξ) e P0) in H0.
-      admit.
-    + eapply safe_mono.
-      2: apply Hsafe.
-      intros. eapply IHτ.
-      admit.
-Admitted.
+  intros.
+  pose proof (logrel_safe_incr_generalized τ nil ξ e P) as H; simpl in H.
+  rewrite upn0 in H; asimpl in *.
+  apply H.
+Qed.
 
 Lemma logrel_context_weaken :
   forall Γ ξ σ P,
@@ -397,4 +412,53 @@ Proof.
   eapply fundamental_theorem with (ξ := nil) (σ := ids) in H
   ; asimpl in *; auto.
   apply logrel_context_nil.
+Qed.
+
+
+(** Free theorems *)
+
+Lemma identity_function :
+  forall e ev v, ev = (of_val v)
+            -> [] ⊢ e ∈ <{ ∀ _ , (#0 -> #0) }>
+            -> safe_parametrized (fun e => e = ev) <{ (e _ ) ev}>.
+Proof.
+  intros e ev v Hev Htyped.
+  eapply fundamental_theorem with (ξ := nil) (σ := ids) in Htyped
+  ;[| apply logrel_context_nil].
+  replace e.[ids] with e in Htyped by (by asimpl).
+  replace <{ e _ ev }> with (fill (LAppCtx (TAppCtx EmptyCtx) ev) e) by auto.
+  eapply safe_bind;eauto.
+  intros;cbn.
+  destruct H as (f & -> & Hsafe).
+  eapply safe_step.
+  eapply Step with (K:= (LAppCtx EmptyCtx ev));eauto.
+  specialize (Hsafe (λ e0 : expr, e0 = ev)).
+  eapply safe_bind;eauto.
+  intros fv Hsafe_fv;cbn.
+  destruct Hsafe_fv as (fe & -> & Hsafe_fv).
+  assert (logrel_safe [λ e0 : expr, e0 = ev] <{ # 0 }> ev)
+  by (simpl;rewrite Hev ; split ; [apply is_val_of_val|reflexivity]).
+  apply Hsafe_fv in H.
+  simpl in H.
+  eapply safe_mono; [|eassumption].
+  intros; simpl in *;firstorder.
+Qed.
+
+Lemma empty_type :
+  forall e, [] ⊢ e ∈ <{ ∀ _ , #0 }>
+       -> safe_parametrized (fun e => False) <{ (e _ )}>.
+Proof.
+  intros e Htyped.
+  eapply fundamental_theorem with (ξ := nil) (σ := ids) in Htyped
+  ;[| apply logrel_context_nil].
+  replace e.[ids] with e in Htyped by (by asimpl).
+  replace <{ e _ }> with (fill (TAppCtx EmptyCtx ) e) by auto.
+  eapply safe_bind;eauto.
+  intros v (f & -> & Hsafe_f).
+  specialize (Hsafe_f (fun e => False)).
+  eapply safe_step.
+  eapply Step with (K:= EmptyCtx) (e1' := <{ (Λ f) _ }>);eauto.
+  simpl in *.
+  eapply safe_mono; [|eassumption].
+  intros; simpl in *;firstorder.
 Qed.
