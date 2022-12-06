@@ -166,7 +166,6 @@ Lemma logrel_context_cons_inv Γ τ ξ σ :
 Proof.
   revert Γ τ σ.
   induction ξ; intros.
-  - unfold logrel_context in H.
 Admitted.
 
 Lemma logrel_context_cons:
@@ -376,4 +375,26 @@ Proof.
     eapply safe_mono.
     2: apply Hsafe_app.
     intros; by apply logrel_subst.
+Qed.
+
+
+Lemma logrel_context_nil:
+  forall Γ,
+  logrel_context Γ [] ids.
+Proof.
+  induction Γ.
+  - intro; induction x;cbn;auto.
+  - intro.
+Admitted.
+
+Theorem type_safety Γ e τ :
+  Γ ⊢ e ∈ τ ->
+  safe_parametrized (fun e => True) e.
+Proof.
+  intros.
+  eapply safe_mono;[by intros|].
+  Unshelve. 2: exact (logrel_safe [] τ).
+  eapply fundamental_theorem with (ξ := nil) (σ := ids) in H
+  ; asimpl in *; auto.
+  apply logrel_context_nil.
 Qed.
