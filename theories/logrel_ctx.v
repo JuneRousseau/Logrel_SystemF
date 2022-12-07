@@ -5,6 +5,8 @@ Require Import Autosubst.Autosubst.
 From logical_relation Require Export relation.
 From logical_relation Require Import syntax_systemF opsem_systemF_ctx.
 
+(* TODO be more consistent with the name *)
+
 (** Logical relation for type soundness *)
 Implicit Types Γ : context.
 Implicit Types τ : ty.
