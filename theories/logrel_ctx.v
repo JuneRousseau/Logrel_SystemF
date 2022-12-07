@@ -131,7 +131,7 @@ Proof.
   + (* var *)
     rename v into x.
     rename v0 into v.
-    asimpl.
+    asimpl in *.
     (* revert x ξ1 ξ2 τ' v. *)
     (* induction ξ1;intros;cbn. *)
     admit.
@@ -196,42 +196,45 @@ Lemma logrel_safe_incr_generalized τ :
 Proof.
   induction τ;intros.
   - (* Var *)
-  (*   split;intros H; destruct H; split;auto. *)
-  (* - (* Unit *) by cbn in *. *)
-  (* - (* Pair *) cbn in *. *)
-  (*   split;intros H *)
-  (*   ; destruct H as (e1&e2&Hval1&Hval2&->&Hsafe1&Hsafe2) *)
-  (*   ; eapply IHτ1 in Hsafe1 *)
-  (*   ; eapply IHτ2 in Hsafe2 *)
-  (*   ; exists e1, e2; repeat(split;eauto). *)
-  (* - (* Arrow *) *)
-  (*   cbn in *. *)
-  (*   split; intros H *)
-  (*   ; destruct H as (e'& ->& Hsafe) *)
-  (*   ; exists e'; split;auto *)
-  (*   ; intros *)
-  (*   ; eapply safe_mono *)
-  (*   ; match goal with *)
-  (*     | h: _ |- safe_parametrized _ _ => eapply Hsafe *)
-  (*     | h: _ |- _ => idtac *)
-  (*   end *)
-  (*   ; intros *)
-  (*   ; try (by eapply IHτ1) *)
-  (*   ; try (by eapply IHτ2). *)
-  (* - (* Forall *) *)
-  (*   cbn in *. *)
-  (*   split; intros H *)
-  (*   ; destruct H as (e'&->&Hsafe) ; exists e' *)
-  (*   ; split;auto *)
-  (*   ; intros. *)
-  (*   + eapply safe_mono. *)
-  (*     2: apply Hsafe. *)
-  (*     intros; eapply (IHτ (P::ξ) e P0) in H0. *)
-  (*     admit. *)
-  (*   + eapply safe_mono. *)
-  (*     2: apply Hsafe. *)
-  (*     intros. eapply IHτ. *)
-  (*     admit. *)
+    admit.
+    (* split;intros Hsafe;cbn in *. *)
+    (* + simpl in *. destruct Hsafe. admit. *)
+    (* + split; [by eapply safe_is_val|]. admit. *)
+  - (* Unit *) by cbn in *.
+  - (* Pair *) cbn in *.
+    split;intros H
+    ; destruct H as (e1&e2&Hval1&Hval2&->&Hsafe1&Hsafe2)
+    ; eapply IHτ1 in Hsafe1
+    ; eapply IHτ2 in Hsafe2
+    ; exists e1, e2; repeat(split;eauto).
+  - (* Arrow *)
+    cbn in *.
+    split; intros H
+    ; destruct H as (e'& ->& Hsafe)
+    ; exists e'; split;auto
+    ; intros
+    ; eapply safe_mono
+    ; match goal with
+      | h: _ |- safe_parametrized _ _ => eapply Hsafe
+      | h: _ |- _ => idtac
+    end
+    ; intros
+    ; try (by eapply IHτ1)
+    ; try (by eapply IHτ2).
+  - (* Forall *)
+    cbn in *.
+    split; intros H
+    ; destruct H as (e'&->&Hsafe) ; exists e'
+    ; split;auto
+    ; intros
+    ; eapply safe_mono
+    ; match goal with
+      | h: _ |- safe_parametrized _ _ => eapply Hsafe
+      | h: _ |- _ => idtac
+    end
+    ; intros
+    ; specialize (IHτ (P0::ξ1) ξ2 e P); asimpl in *
+    ; by eapply IHτ.
 Admitted.
 
 Lemma logrel_safe_incr :
@@ -266,7 +269,15 @@ Lemma get_logrel_context:
   logrel_context Γ ξ σ ->
   get Γ x = Some τ ->
   exists e, get σ x = Some e /\ logrel_safe ξ τ e.
-Admitted.
+Proof.
+  intros.
+  revert x τ H0.
+  induction H; intros * HsomeΓ.
+  - destruct x;cbn in HsomeΓ;discriminate.
+  - destruct x0;cbn in *;eauto.
+    eexists;split;eauto.
+    by injection HsomeΓ;intros;subst.
+Qed.
 
 Lemma env_subst_get :
   forall σ x e, get σ x = Some e → env_subst σ x = e.
@@ -321,7 +332,6 @@ Proof.
     apply is_val_step in He'; auto;subst.
     left. split; auto.
     simpl.
-    (* split;[by eapply safe_domain; eassumption|split;auto]. *)
     exists (of_val v1). exists (of_val v2).
     repeat (split;auto using is_val_of_val).
   - (* T_Fst *)
