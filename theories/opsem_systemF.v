@@ -1,7 +1,8 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
-From Coq Require Import Strings.String.
+From Coq Require Import Relations.Relation_Operators.
 From stdpp Require Import gmap list.
-From logical_relation Require Import relation syntax_systemF.
+Require Import Autosubst.Autosubst.
+From logical_relation Require Import syntax_systemF.
 
 Reserved Notation "t '~>' t'" (at level 60).
 Inductive step : expr -> expr -> Prop :=
@@ -13,9 +14,9 @@ Inductive step : expr -> expr -> Prop :=
   is_val v1 ->
   is_val v2 ->
   <{ snd ⟨ v1, v2 ⟩ }> ~>  <{ v2 }>
-| step_lam_red : forall x e v,
+| step_lam_red : forall e v,
   is_val v ->
-  <{ (λ x, e) v }> ~>  <{ [x / v]e }>
+  <{ (λ _, e) v }> ~>  e.[v/]
 | step_tlam_red : forall e,
   <{ (Λ e) _ }> ~>  <{ e }>
 | step_fst : forall e e',
@@ -48,43 +49,8 @@ Inductive step : expr -> expr -> Prop :=
 where "t '~>' t'" := (step t t').
 Hint Constructors step : core.
 
-Definition mstep := star expr step.
+Definition mstep :=  clos_refl_trans_1n expr step.
 Notation "t '~>*' t'" := (mstep t t') (at level 60).
-
-(** Examples *)
-Goal <{ (λ x , x) tt }> ~>* <{tt}>.
-Proof.
-  eapply star_one.
-  apply step_lam_red.
-  apply v_unit.
-Qed.
-
-Goal <{ fst ((λ x , ( ⟨ (λ y , tt) x , (λ y , x) tt⟩ )) tt)}> ~>* <{tt}>.
-Proof.
-  eapply star_trans with <{ fst ( ⟨ (λ y , tt) tt , (λ y , tt) tt⟩ )}>.
-  eapply star_one.
-  eapply step_fst; eapply step_lam_red ; apply v_unit.
-
-  eapply star_trans with <{ fst ( ⟨ tt , (λ y , tt) tt⟩ )}>.
-  eapply star_one.
-  eapply step_fst; eapply step_pairL; eapply (step_lam_red y <{ tt }> ); apply v_unit.
-
-  eapply star_trans with <{ fst ( ⟨ tt , tt⟩ )}>.
-  eapply star_one.
-  eapply step_fst; eapply step_pairR;[apply v_unit|];
-    eapply (step_lam_red y <{ tt }> ); apply v_unit.
-
-  eapply star_one.
-  eapply step_fst_red; apply v_unit.
-Qed.
-
-Lemma identity : forall v e, e = (of_val v) -> <{ (λ x , x) e }> ~>* <{e}>.
-Proof.
-  intros v e ->.
-  eapply star_one.
-  apply step_lam_red.
-  apply is_val_of_val.
-Qed.
 
 (** Properties in the operational semantic *)
 Lemma is_val_stuck : forall e e', is_val e -> not (e ~> e').
@@ -102,15 +68,7 @@ Lemma is_val_step : forall e e', is_val e -> e ~>* e' -> e' = e.
   by apply is_val_stuck in H.
 Qed.
 
-Ltac solve_by_inverts n :=
-  match goal with | H : ?T |- _ =>
-                      match type of T with Prop =>
-                                             solve [
-                                                 inversion H;
-                                                 match n with S (S (?n')) => subst; solve_by_inverts (S n') end ]
-                      end end.
-
-Lemma sf_deterministic : deterministic expr step.
+Lemma sf_deterministic : forall e e1 e2, e ~> e1 -> e ~> e2 -> e1 = e2.
 Proof.
   intros e e' e'' step_e' step_e''.
   generalize dependent e''.
@@ -147,40 +105,4 @@ Proof.
   - inversion step_e'';subst.
     apply is_val_stuck in step_e'; auto; contradiction.
     eapply IHstep_e' in H0; subst;auto.
-Qed.
-
-(* is that even true ? for deterministic rewriting system ? *)
-Lemma star_step : forall e e2 e3,
-  e ~>* e2 ->
-  e2 ~> e3 ->
-  (exists e1, e ~> e1 /\ e1 ~>* e2) \/ e = e3.
-Proof.
-  intros.
-
-  (* eapply star_star_inv in H. ; eauto. *)
-
-  (* inversion H; subst e2; subst. *)
-  (* left. exists e3. *)
-  (* apply star_trans with (a:= e3) in H. *)
-  (* split ; eauto. *)
-  (* apply star_trans with (a:= e3) in H; auto. *)
-
-Admitted.
-
-Lemma step_deterministic_multiple : forall e e' e'',
-  e ~> e'
-  -> e ~>* e''
-  -> e' ~>* e''.
-Proof.
-  intros e e' e'' step_e mstep_e.
-  inversion mstep_e; subst.
-  - eapply star_step in mstep_e; eauto.
-    destruct mstep_e as [ (e0& mstep_e& mstep_eO) | mstep_e ].
-    eapply sf_deterministic in step_e. apply step_e in mstep_e. subst.
-    done.
-    (* by apply star_one. *)
-    subst. apply star_refl.
-  - eapply sf_deterministic in step_e.
-    apply step_e in H.
-    rewrite H. auto.
 Qed.

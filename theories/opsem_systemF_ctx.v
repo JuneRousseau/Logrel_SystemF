@@ -1,9 +1,8 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
-From Coq Require Import Strings.String.
+From Coq Require Import Relations.Relation_Operators.
 From stdpp Require Import gmap list.
 Require Import Autosubst.Autosubst.
-From logical_relation Require Import relation syntax_systemF.
-
+From logical_relation Require Import syntax_systemF opsem_systemF.
 
 Reserved Notation "t '-h->' t'" (at level 60).
 Inductive pure_step : expr -> expr -> Prop :=
@@ -56,11 +55,8 @@ Inductive step e1 e2 : Prop :=
 where "e1 '~>' e2" := (step e1 e2).
 Hint Constructors step : core.
 
-Definition mstep := star expr step.
+Definition mstep :=  clos_refl_trans_1n expr step.
 Notation "t '~>*' t'" := (mstep t t') (at level 60).
-
-(* Definition reducible (e : expr) := *)
-(*   ∃ e', step e e'. *)
 
 Lemma fill_empty e : fill EmptyCtx e = e.
 Proof. done. Qed.
@@ -109,7 +105,6 @@ Fixpoint comp_ectx (K: ectx) (K' : ectx) : ectx :=
   | TAppCtx K => TAppCtx (comp_ectx K K')
   end.
 
-
 Lemma fill_comp (K1 K2 : ectx) e : fill K1 (fill K2 e) = fill (comp_ectx K1 K2) e.
 Proof. induction K1; simpl; congruence. Qed.
 
@@ -124,95 +119,12 @@ Proof.
   rewrite !fill_comp. by econstructor.
 Qed.
 
-(* Lemma about the context *)
-Lemma cstep_app_r' f e e':
-  step e e' →
-  step (expr_app (of_val f) e) (expr_app (of_val f) e').
-Proof.
-  intros Hstep.
-  by apply (fill_contextual_step (RAppCtx EmptyCtx f)) in Hstep.
-Qed.
-
-Lemma cstep_app_r f e e':
-  is_val f ->
-  step e e' →
-  step (expr_app f e) (expr_app f e').
-Proof.
-  intros Hv Hstep.
-  apply is_val_inversion in Hv; destruct Hv; subst.
-  by apply cstep_app_r'.
-Qed.
-
-Lemma cstep_app_l e1 e1' e2:
-  step e1 e1' →
-  step (expr_app e1 e2) (expr_app e1' e2).
-Proof.
-  intros Hstep.
-  by eapply (fill_contextual_step (LAppCtx EmptyCtx e2)).
-Qed.
-
-Lemma cstep_tapp e e':
-  step e e' →
-  step (expr_tapp e) (expr_tapp e').
-Proof.
-  intros Hstep.
-  by eapply (fill_contextual_step (TAppCtx EmptyCtx)).
-Qed.
-
-Lemma cstep_fst e e':
-  step e e' →
-  step (expr_fst e) (expr_fst e').
-Proof.
-  intros Hstep.
-  by eapply (fill_contextual_step (FstCtx EmptyCtx)).
-Qed.
-
-Lemma cstep_snd e e':
-  step e e' →
-  step (expr_snd e) (expr_snd e').
-Proof.
-  intros Hstep.
-  by eapply (fill_contextual_step (SndCtx EmptyCtx)).
-Qed.
-
-Lemma cstep_pair_l e1 e1' e2:
-  step e1 e1' →
-  step (expr_pair e1 e2) (expr_pair e1' e2).
-Proof.
-  intros Hstep.
-  by eapply (fill_contextual_step (LPairCtx EmptyCtx e2)).
-Qed.
-
-Lemma cstep_pair_r' v e e':
-  step e e' →
-  step (expr_pair (of_val v) e) (expr_pair (of_val v) e').
-Proof.
-  intros Hstep.
-  by apply (fill_contextual_step (RPairCtx EmptyCtx v)) in Hstep.
-Qed.
-
-Lemma cstep_pair_r v e e':
-  is_val v ->
-  step e e' →
-  step (expr_pair v e) (expr_pair v e').
-Proof.
-  intros Hv Hstep.
-  apply is_val_inversion in Hv; destruct Hv; subst.
-  by apply cstep_pair_r'.
-Qed.
-
-Lemma pure_step_deterministic : deterministic expr pure_step.
+Lemma pure_step_deterministic : forall e e1 e2,
+  e -h-> e1 -> e -h-> e2 -> e1 = e2.
 Proof.
   intros e e1 e2 step1 step2.
   induction step1;inversion_clear step2;auto.
 Qed.
-
-Lemma sf_deterministic : deterministic expr step.
-Proof.
-  intros e e1 e2 step1 step2.
-  inversion step1 ; subst.
-  inversion step2; subst.
-Admitted.
 
 Lemma step_fill K : forall e e',
     e ~> e' ->
@@ -230,23 +142,12 @@ Lemma mstep_fill K : forall e e',
 Proof.
   intros. generalize dependent K.
   induction H; intros.
-  + apply star_refl.
+  + constructor.
   + apply (step_fill K) in H.
-    eapply star_step; eauto.
-    apply IHstar.
+    econstructor;eauto.
+    firstorder.
 Qed.
 
-Definition is_val_dec :
-  ∀ e, is_val e ∨ ¬ is_val e.
-Proof.
-   induction e; try (by right; inversion 1).
-   - left; constructor.
-   - destruct IHe1; [|by right; inversion 1].
-     destruct IHe2; [|by right; inversion 1].
-     by left; constructor.
-   - left; constructor.
-   - left; constructor.
-Qed.
 
 Lemma is_val_fill K e :
   is_val (fill K e) -> is_val e.
@@ -398,6 +299,46 @@ Proof.
   induction K;cbn in *;auto;apply IHK; by injection H.
 Qed.
 
+Theorem opsem_equivalent:
+  forall e e',
+   opsem_systemF_ctx.step e e' <-> opsem_systemF.step e e'.
+Proof.
+Hint Resolve is_val_of_val : core.
+  intros.
+  split; intros.
+  - induction H.
+    subst.
+    induction K; intros; subst; simpl;
+      try (by inversion H1; subst; auto).
+  - induction H;
+    match goal with
+      | h: _ ~> _ |- ?e1 ~> ?e2 => idtac
+      | h: _ |- ?e1 ~> ?e2 =>
+          eapply (Step _ _ EmptyCtx e1 e2 ); auto
+      end.
+    + inversion IHstep; subst.
+      eapply (Step _ _ (FstCtx K) e1' e2' ); auto.
+    + inversion IHstep; subst.
+      eapply (Step _ _ (SndCtx K) e1' e2' ); auto.
+    + inversion IHstep; subst.
+      eapply (Step _ _ (LPairCtx K _) _ _); auto.
+    + inversion IHstep; subst.
+      apply is_val_inversion in H ; destruct H as [v' Hv]; subst.
+      eapply (Step _ _ (RPairCtx K v') e1' e2'); auto.
+    + inversion IHstep; subst.
+      eapply (Step _ _ (LAppCtx K _) _ _); auto.
+    + inversion IHstep; subst.
+      apply is_val_inversion in H ; destruct H as [v' Hv]; subst.
+      eapply (Step _ _ (RAppCtx K _) e1' e2'); auto.
+    + inversion IHstep; subst.
+      eapply (Step _ _ (TAppCtx K) _ _); auto.
+Qed.
+
+Lemma sf_deterministic : forall e e1 e2, e ~> e1 -> e ~> e2 -> e1 = e2.
+Proof.
+  intros.
+  apply opsem_systemF.sf_deterministic with (e:=e) ; by apply opsem_equivalent.
+Qed.
 
 Lemma step_ectx (K : ectx) e e' :
     (fill K e) ~> e' →
@@ -424,11 +365,28 @@ Proof.
         split; [by apply pure_contextual_step|].
         rewrite HeqK.
         by rewrite H0.
-      * tauto. (* TODO why does tauto work here ? *)
+      * tauto.
     + rewrite HeqK in HeqK0.
       apply fill_K_injective in HeqK0.
       exists (fill K'' e2); split; [| by rewrite HeqK].
       eapply Step;eauto.
+Qed.
+
+Inductive nstep : nat → expr → expr → Prop :=
+| no_step e : nstep 0 e e
+| next_step n e1 e2 e3 : step e1 e2 → nstep n e2 e3 → nstep (S n) e1 e3.
+
+Lemma mstep_nstep e e' : mstep e e' → ∃ n, nstep n e e'.
+Proof.
+  intros. induction H as [| ????? IHstar].
+  - exists 0 ; constructor.
+  - destruct IHstar as (n & IH). exists (S n).
+    econstructor;eauto.
+Qed.
+
+Lemma nstep_mstep n e e' : nstep n e e' → mstep e e'.
+Proof.
+  induction 1; econstructor;eauto.
 Qed.
 
 Lemma mstep_ectx (K : ectx) e e' :
@@ -437,41 +395,22 @@ Lemma mstep_ectx (K : ectx) e e' :
     ∨ (∃ v , is_val v ∧ e ~>* v ∧ (fill K v) ~>* e').
 Proof.
   intros.
-  (* induction H. *)
-  (* - induction e. *)
-  (*   destruct (is_val_dec a). *)
-  (*   + (* a is a value *) *)
-  (*     right. exists a. *)
-  (*     pose proof pure_step_fill. *)
-  (* - destruct IHstar as [(e'' & -> & Hstep) | (v& Hval & Hmstep & Hstep)] *)
-  (*   ; [left; exists e'' |right ; exists v]; firstorder. *)
-  inversion H;subst.
-  - left. exists e. split;auto;constructor.
-  - fold (mstep b e') in H1.
-    apply step_ectx in H0.
-    destruct H0 as [Hv | (e'' & Hstep & ->)].
-    + right. exists e; firstorder. constructor.
-    (* + induction H1. *)
-    (*   ++ destruct (is_val_dec e''). *)
-    (*      +++ right. exists e''. *)
-    (*          assert (e ~>* e'') by (econstructor;eauto). *)
-    (*          firstorder. *)
-    (*          apply mstep_fill with (K:= K) in H1. *)
-    (*          admit. *)
-    (*      +++ right. *)
-    (*        admit. *)
-    (*   ++ apply IHstar in H. apply H. *)
-
-    + left. exists e; firstorder. 2: constructor.
-      (* TODO I finally end up in the same issue than previously
-         e --->* ef
-         |       ^*
-         v       |
-         e' -----|
-         which is true because determinism
-         but I don't know how to prove it, because the reflexive path does not give anything. *)
-Admitted.
-
+  apply mstep_nstep in H.
+  destruct H as [n Hnstep].
+  revert e e' Hnstep.
+  induction n; intros e e' Hnstep.
+  - inversion Hnstep; subst; left; exists e ; split; auto; constructor.
+  - inversion Hnstep as [|n' e1 e2 e3 HfillK Hnstep2];subst.
+    apply step_ectx in HfillK.
+    destruct HfillK as [HfillK | (e'' & Hstep_e & ->)].
+    + right; exists e.
+      split;auto.
+      split;[constructor|].
+      eapply nstep_mstep;eauto.
+    + apply IHn in Hnstep2.
+      destruct Hnstep2 as [ (e3 &?) | (e3 &?) ]
+      ; [left | right]; exists e3; firstorder; econstructor;eauto.
+Qed.
 
 Lemma step_fst_val v1 v2:
   is_val v1 ->
@@ -496,16 +435,4 @@ Proof.
   intros; eapply (Step _ _ EmptyCtx); eauto.
 Qed.
 
-#[export]
-Hint Resolve step_fst_val step_snd_val step_app_val : core.
-
-
-#[export]
-  Hint Resolve
-  cstep_app_l
-  cstep_app_r
-  cstep_tapp
-  cstep_fst
-  cstep_snd
-  cstep_pair_l
-  cstep_pair_r : core.
+#[export] Hint Resolve step_fst_val step_snd_val step_app_val : core.

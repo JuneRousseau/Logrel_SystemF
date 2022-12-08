@@ -1,8 +1,6 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
-From Coq Require Import Strings.String.
 From stdpp Require Import gmap list.
 Require Import Autosubst.Autosubst.
-From logical_relation Require Import relation.
 
 Inductive ty : Type :=
 | Ty_Var : var -> ty
@@ -11,10 +9,10 @@ Inductive ty : Type :=
 | Ty_Arrow : ty -> ty -> ty
 | Ty_Forall : {bind ty} -> ty.
 
-Instance Ids_ty : Ids ty. derive. Defined.
-Instance Rename_ty : Rename ty. derive. Defined.
-Instance Subst_ty : Subst ty. derive. Defined.
-Instance SubstLemmas_ty : SubstLemmas ty. derive. Qed.
+#[export] Instance Ids_ty : Ids ty. derive. Defined.
+#[export] Instance Rename_ty : Rename ty. derive. Defined.
+#[export] Instance Subst_ty : Subst ty. derive. Defined.
+#[export] Instance SubstLemmas_ty : SubstLemmas ty. derive. Qed.
 
 Inductive expr : Type :=
 | expr_var : var -> expr
@@ -32,10 +30,10 @@ Inductive val :=
 | val_lam : {bind expr} -> val
 | val_tlam : expr -> val.
 
-Instance Ids_expr : Ids expr. derive. Defined.
-Instance Rename_expr : Rename expr. derive. Defined.
-Instance Subst_expr : Subst expr. derive. Defined.
-Instance SubstLemmas_expr : SubstLemmas expr. derive. Qed.
+#[export] Instance Ids_expr : Ids expr. derive. Defined.
+#[export] Instance Rename_expr : Rename expr. derive. Defined.
+#[export] Instance Subst_expr : Subst expr. derive. Defined.
+#[export] Instance SubstLemmas_expr : SubstLemmas expr. derive. Qed.
 
 Fixpoint of_val (v : val) : expr :=
   match v with
@@ -89,6 +87,17 @@ Proof.
   induction v; simpl; by constructor.
 Qed.
 
+Definition is_val_dec :
+  ∀ e, is_val e ∨ ¬ is_val e.
+Proof.
+   induction e; try (by right; inversion 1).
+   - left; constructor.
+   - destruct IHe1; [|by right; inversion 1].
+     destruct IHe2; [|by right; inversion 1].
+     by left; constructor.
+   - left; constructor.
+   - left; constructor.
+Qed.
 
 Declare Custom Entry sf.
 Declare Custom Entry ty.
