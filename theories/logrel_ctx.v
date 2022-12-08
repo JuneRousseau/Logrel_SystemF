@@ -5,24 +5,35 @@ Require Import Autosubst.Autosubst.
 From logical_relation Require Export relation.
 From logical_relation Require Import syntax_systemF opsem_systemF_ctx.
 
-(* TODO be more consistent with the name *)
+(*** Logical relation for type
+     soundness of SystemF *)
 
-(** Logical relation for type soundness *)
-Implicit Types Γ : context.
+Implicit Types Γ : typing_context.
 Implicit Types τ : ty.
 
-Definition substitution := list (expr -> Prop).
-Implicit Types ξ : substitution.
+Definition subst_interpretation := list (expr -> Prop).
+Implicit Types ξ : subst_interpretation.
 
-Definition environment := list expr.
-Implicit Types σ : environment.
+Definition substitution := list expr.
+Implicit Types γ : substitution.
 
-Fixpoint env_subst (env : environment) : var → expr :=
-  match env with
+(* We can turn the substitution γ into a function from variables
+   to expression *)
+Fixpoint fun_subst (γ : substitution) : var → expr :=
+  match γ with
   | [] => ids
-  | g::env' => g .: env_subst env'
+  | e::γ' => e .: fun_subst γ'
   end.
 
+Lemma env_subst_get :
+  forall γ x e, get γ x = Some e → fun_subst γ x = e.
+Proof.
+  induction γ; intros * Hsome;simpl in *.
+  - induction x;cbn in Hsome;discriminate.
+  - destruct x;cbn in *.
+    + by injection Hsome.
+    + by apply IHγ.
+Qed.
 
 (** Safe parametrized by P
     cf Section 4. Safe_{P}(e) *)
@@ -87,9 +98,9 @@ Qed.
 (** Logical relation for type safety defined using safe parametrized
     cf Section 5. Predicates on values *)
 
-(** ξ is a substitution, ie. it is a function that maps a variable to
+(** ξ is a name, ie. it is a function that maps a variable to
     an expression property. *)
-Fixpoint logrel_safe (ξ : substitution) (τ : ty) (v : expr) :=
+Fixpoint logrel_val ξ τ v :=
   match τ with
   | Ty_Var α => is_val v
                /\ match (get ξ α) with
@@ -101,21 +112,26 @@ Fixpoint logrel_safe (ξ : substitution) (τ : ty) (v : expr) :=
         exists e1 e2, is_val e1
                  /\ is_val e2
                  /\ v = <{ ⟨ e1, e2 ⟩ }>
-                 /\ logrel_safe ξ t1 e1
-                 /\ logrel_safe ξ t2 e2
+                 /\ logrel_val ξ t1 e1
+                 /\ logrel_val ξ t2 e2
     | Ty_Arrow t1 t2 =>
         exists e, v = <{ λ _, e }>
-               /\ (forall v', logrel_safe ξ t1 v' ->
-                        safe_parametrized (logrel_safe ξ t2) (<{v v'}>))
+               /\ (forall v', logrel_val ξ t1 v' ->
+                        safe_parametrized (logrel_val ξ t2) (<{v v'}>))
     | Ty_Forall t =>
         exists e, v = <{ Λ e }>
-             /\ forall (P: expr -> Prop), safe_parametrized (logrel_safe (P :: ξ) t) e
+             /\ forall (P: expr -> Prop), safe_parametrized (logrel_val (P :: ξ) t) e
 end.
 
-Definition logrel_context (Γ: context) (ξ: substitution) (σ : environment) : Prop :=
-  Forall2 (logrel_safe ξ) Γ σ.
+Notation "V[ ξ ]" := (logrel_val ξ) (at level 0, format "V[ ξ ]").
 
-Lemma safe_is_val ξ v τ : logrel_safe ξ τ v -> is_val v.
+(** We define the semantic substitution.
+We say that the substitution γ satisfies the typing context Γ. *)
+Definition sem_subst P γ Γ : Prop := Forall2 P Γ γ.
+Notation "γ '⊨(' P ')' Γ" := (sem_subst P γ Γ) (at level 0, format "γ '⊨(' P ')' Γ").
+
+Lemma safe_is_val ξ v τ :
+  logrel_val ξ τ v -> is_val v.
 Proof.
   induction τ; simpl ; intros; try destruct H as (?&?);auto.
   - subst; constructor.
@@ -124,10 +140,53 @@ Proof.
   - destruct H as (?&?); subst; by constructor.
 Qed.
 
+(* If γ satisfies Γ, and the variable x is in Γ, then
+   x is also in γ, and respect the right property *)
+Lemma get_sem_subst:
+  forall P Γ γ (x : var) τ,
+  γ ⊨(P) Γ ->
+  get Γ x = Some τ ->
+  exists e, get γ x = Some e /\ P τ e.
+Proof.
+  intros.
+  revert x τ H0.
+  induction H; intros * HsomeΓ.
+  - destruct x;cbn in HsomeΓ;discriminate.
+  - destruct x0;cbn in *;eauto.
+    eexists;split;eauto.
+    by injection HsomeΓ;intros;subst.
+Qed.
+
+Lemma sem_subst_cons_r_inv P Γ γ τ :
+  (γ ⊨(P) (τ::Γ)) ->
+  exists e γ', γ = (e::γ')
+          /\ P τ e
+          /\ (γ' ⊨(P) Γ).
+Proof.
+  inversion 1;eauto.
+Qed.
+
+Lemma sem_subst_cons_l_inv P Γ γ e :
+  ((e::γ) ⊨(P) Γ) ->
+  exists τ Γ', Γ = (τ::Γ')
+          /\ P τ e
+          /\ (γ ⊨(P) Γ').
+Proof.
+  inversion 1;eauto.
+Qed.
+
+Lemma sem_subst_cons P Γ γ e τ:
+  (γ ⊨(P) Γ)
+  → P τ e
+  → ((e::γ) ⊨(P) (τ :: Γ)).
+Proof.
+  intros * Hcontext Hsafe; by constructor.
+Qed.
+
 Lemma logrel_subst_generalized τ :
   forall ξ1 ξ2 τ' v,
-  (logrel_safe (ξ1++ξ2) τ.[upn (length ξ1) (τ'.: ids)] v)
-  <-> (logrel_safe (ξ1 ++ (logrel_safe ξ2 τ')::ξ2) τ v).
+  (logrel_val (ξ1++ξ2) τ.[upn (length ξ1) (τ'.: ids)] v)
+  <-> (logrel_val (ξ1 ++ (logrel_val ξ2 τ')::ξ2) τ v).
 Proof.
   induction τ; intros *.
   + (* var *)
@@ -165,36 +224,17 @@ Admitted.
 (* Cannot be done naively: the induction hypothesis for type lambda abstraction
    is not strong enough ! *)
 Lemma logrel_subst ξ τ τ' v :
-  (logrel_safe ξ τ.[τ'/] v )
-  <-> (logrel_safe ((logrel_safe ξ τ')::ξ) τ v).
+  (logrel_val ξ τ.[τ'/] v )
+  <-> (logrel_val ((logrel_val ξ τ')::ξ) τ v).
 Proof.
   apply logrel_subst_generalized with (ξ1 := nil).
 Qed.
 
-Lemma logrel_context_cons_inv Γ τ ξ σ :
- logrel_context (τ :: Γ) ξ σ ->
- exists x σ', σ = (x::σ')
-         /\ logrel_safe ξ τ x
-         /\ logrel_context Γ ξ σ'.
-Proof.
-  revert Γ τ σ.
-  destruct ξ; intros; inversion H;subst; exists y, l'; firstorder.
-Qed.
 
-Lemma logrel_context_cons:
-  ∀ (Γ : context) (ξ : substitution) σ (e : expr) τ,
-  logrel_context Γ ξ σ
-  → logrel_safe ξ τ e
-  → logrel_context (τ :: Γ) ξ (e :: σ).
-Proof.
-  intros * Hcontext Hsafe.
-  by constructor.
-Qed.
-
-Lemma logrel_safe_incr_generalized τ :
+Lemma logrel_val_incr_generalized τ :
   forall ξ1 ξ2 e P,
-  logrel_safe (ξ1 ++ ξ2) τ e ↔
-  logrel_safe (ξ1 ++ P :: ξ2) (τ.[upn (length ξ1) (ren (+ 1))]) e.
+  logrel_val (ξ1 ++ ξ2) τ e ↔
+  logrel_val (ξ1 ++ P :: ξ2) (τ.[upn (length ξ1) (ren (+ 1))]) e.
 Proof.
   induction τ;intros.
   - (* Var *)
@@ -239,73 +279,49 @@ Proof.
     ; by eapply IHτ.
 Admitted.
 
-Lemma logrel_safe_incr :
+Lemma logrel_val_incr :
   forall τ ξ e P,
-  logrel_safe ξ τ e <->
-  logrel_safe (P :: ξ) (rename (+1) τ) e.
+  logrel_val ξ τ e <->
+  logrel_val (P :: ξ) (rename (+1) τ) e.
 Proof.
   intros.
-  pose proof (logrel_safe_incr_generalized τ nil ξ e P) as H; simpl in H.
+  pose proof (logrel_val_incr_generalized τ nil ξ e P) as H; simpl in H.
   rewrite upn0 in H; asimpl in *.
   apply H.
 Qed.
 
-Lemma logrel_context_weaken :
-  forall Γ ξ σ P,
-  logrel_context Γ ξ σ ->
-  logrel_context (map (rename (+1)) Γ) (P :: ξ) σ.
+Lemma sem_subst_weaken :
+  forall ξ Γ γ P,
+  (γ ⊨(V[ξ]) Γ) ->
+  (γ ⊨(V[P::ξ]) (map (rename (+1)) Γ)).
 Proof.
   intros.
-  generalize dependent σ.
+  generalize dependent γ.
   induction Γ;intros.
-  - unfold logrel_context in H.
-    by inversion H; subst; apply Forall2_nil.
-  - apply logrel_context_cons_inv in H.
+  - by inversion H; subst; apply Forall2_nil.
+  - apply sem_subst_cons_r_inv in H.
     destruct H as (e & σ' & -> & Hsafe & Hcontext).
-    apply logrel_context_cons;auto.
-    by apply logrel_safe_incr.
+    apply sem_subst_cons;auto.
+    by apply logrel_val_incr.
 Qed.
 
-Lemma get_logrel_context:
-  forall Γ ξ σ x τ,
-  logrel_context Γ ξ σ ->
-  get Γ x = Some τ ->
-  exists e, get σ x = Some e /\ logrel_safe ξ τ e.
-Proof.
-  intros.
-  revert x τ H0.
-  induction H; intros * HsomeΓ.
-  - destruct x;cbn in HsomeΓ;discriminate.
-  - destruct x0;cbn in *;eauto.
-    eexists;split;eauto.
-    by injection HsomeΓ;intros;subst.
-Qed.
-
-Lemma env_subst_get :
-  forall σ x e, get σ x = Some e → env_subst σ x = e.
-Proof.
-  induction σ; intros * Hsome;simpl in *.
-  - induction x;cbn in Hsome;discriminate.
-  - destruct x;cbn in *.
-    + by injection Hsome.
-    + by apply IHσ.
-Qed.
 
 Theorem fundamental_theorem :
   forall Γ τ e ,
   Γ ⊢ e ∈ τ ->
-  (forall ξ σ,
-     logrel_context Γ ξ σ -> safe_parametrized (logrel_safe ξ τ) e.[env_subst σ]).
+  (forall ξ γ,
+     γ ⊨(V[ξ]) Γ
+     -> safe_parametrized (logrel_val ξ τ) e.[fun_subst γ]).
 Proof.
-  induction 1; intros; set (eσ := env_subst σ).
+  induction 1; intros; set (fγ := fun_subst γ).
   - (* T_Unit *)
     apply safe_val; auto.
     simpl in * ; split ; auto.
   - (* T_Var *)
     cbn.
-    eapply get_logrel_context in H;eauto.
+    eapply get_sem_subst in H;eauto.
     destruct H as (e& ? & Hsafe).
-    replace (eσ x) with e by (by symmetry; apply env_subst_get).
+    replace (fγ x) with e by (by symmetry; apply env_subst_get).
     assert (Hval: is_val e) by (by eapply safe_is_val).
     apply safe_val;auto.
   - (* T_Prod *)
@@ -313,8 +329,8 @@ Proof.
     pose proof H1 as H1'.
     apply IHtyping_judgment1 in H1.
     apply IHtyping_judgment2 in H1'.
-    set (es1 := e1.[eσ]) in *.
-    set (es2 := e2.[eσ]) in *.
+    set (es1 := e1.[fγ]) in *.
+    set (es2 := e2.[fγ]) in *.
     replace (expr_pair es1 es2) with (fill (LPairCtx EmptyCtx es2) es1) by auto.
     eapply safe_bind;eauto.
     intros ve1 Hsafe_ve1.
@@ -339,8 +355,8 @@ Proof.
   - (* T_Fst *)
     cbn.
     apply IHtyping_judgment in H0.
-    replace (expr_fst (e.[eσ]))
-              with (fill (FstCtx EmptyCtx) (e.[eσ])) by auto.
+    replace (expr_fst (e.[fγ]))
+              with (fill (FstCtx EmptyCtx) (e.[fγ])) by auto.
     eapply safe_bind;eauto .
     intros v Hrel.
     cbn in Hrel.
@@ -352,8 +368,8 @@ Proof.
   - (* T_Snd *)
     cbn.
     apply IHtyping_judgment in H0.
-    replace (expr_snd (e.[eσ]))
-              with (fill (SndCtx EmptyCtx) (e.[eσ])) by auto.
+    replace (expr_snd (e.[fγ]))
+              with (fill (SndCtx EmptyCtx) (e.[fγ])) by auto.
     eapply safe_bind;eauto .
     intros v Hrel.
     cbn in Hrel.
@@ -365,22 +381,23 @@ Proof.
   - (* T_Lam *)
     simpl subst.
     apply safe_val;[constructor|].
-    exists (e.[up eσ]).
+    exists (e.[up fγ]).
     split; auto.
     intros e' Hsafe.
     pose proof Hsafe as Hval_e'.
     apply safe_is_val in Hval_e'.
-    eapply safe_step with (e' := (e.[up eσ].[e'/])) ; eauto.
-    subst eσ; asimpl.
-    eapply (logrel_context_cons _ _ _ e' τ1) in H0;auto.
+    eapply safe_step with (e' := (e.[up fγ].[e'/])) ; eauto.
+    subst fγ; asimpl.
+    Unset Printing Notations.
+    apply (sem_subst_cons V[ξ] Γ γ e' τ1) in H0;auto.
     by apply IHtyping_judgment in H0;cbn in H0.
   - (* T_App *)
     simpl subst.
     pose proof H1 as H1'.
     apply IHtyping_judgment1 in H1.
     apply IHtyping_judgment2 in H1'.
-    set (fs := (f.[eσ])) in *.
-    set (arg := (e.[eσ])) in *.
+    set (fs := (f.[fγ])) in *.
+    set (arg := (e.[fγ])) in *.
     replace (expr_app fs arg)
               with (fill (LAppCtx EmptyCtx arg) fs) by auto.
     eapply safe_bind;eauto .
@@ -403,11 +420,11 @@ Proof.
     eexists;split;[reflexivity|].
     intros.
     apply IHtyping_judgment.
-    apply logrel_context_weaken;auto.
+    apply sem_subst_weaken;auto.
   - (* T_TApp *)
     simpl subst.
     apply IHtyping_judgment in H0.
-    set (es := e.[eσ]) in *.
+    set (es := e.[fγ]) in *.
     replace (expr_tapp es)
               with (fill (TAppCtx EmptyCtx) es) by auto.
     eapply safe_bind ;eauto.
@@ -416,7 +433,7 @@ Proof.
     destruct Hev as (f & -> & Hsafe_app).
     eapply safe_step with (e' := f).
     eapply (Step _ _ EmptyCtx); eauto; econstructor.
-    specialize (Hsafe_app (logrel_safe ξ τ')).
+    specialize (Hsafe_app (logrel_val ξ τ')).
     eapply safe_mono.
     2: apply Hsafe_app.
     intros; by apply logrel_subst.
@@ -428,8 +445,8 @@ Theorem type_safety e τ :
 Proof.
   intros.
   eapply safe_mono;[by intros|].
-  Unshelve. 2: exact (logrel_safe [] τ).
-  eapply fundamental_theorem with (ξ := nil) (σ := nil) in H
+  Unshelve. 2: exact (logrel_val [] τ).
+  eapply fundamental_theorem with (ξ := nil) (γ := nil) in H
   ; asimpl in *; auto; constructor.
 Qed.
 
@@ -437,13 +454,13 @@ Qed.
 
 Lemma identity_function :
   forall e ev v, ev = (of_val v)
-            -> [] ⊢ e ∈ <{ ∀ _ , (#0 -> #0) }>
+            -> [] ⊢ e ∈ (∀ _ , ($0 -> $0))
             -> safe_parametrized (fun e => e = ev) <{ (e _ ) ev}>.
 Proof.
   intros e ev v Hev Htyped.
-  eapply fundamental_theorem with (ξ := nil) (σ := nil) in Htyped
+  eapply fundamental_theorem with (ξ := nil) (γ := nil) in Htyped
   ;[| constructor].
-  replace e.[env_subst []] with e in Htyped by (by asimpl).
+  replace e.[fun_subst []] with e in Htyped by (by asimpl).
   replace <{ e _ ev }> with (fill (LAppCtx (TAppCtx EmptyCtx) ev) e) by auto.
   eapply safe_bind;eauto.
   intros;cbn.
@@ -454,7 +471,7 @@ Proof.
   eapply safe_bind;eauto.
   intros fv Hsafe_fv;cbn.
   destruct Hsafe_fv as (fe & -> & Hsafe_fv).
-  assert (logrel_safe [λ e0 : expr, e0 = ev] <{ # 0 }> ev)
+  assert (logrel_val [λ e0 : expr, e0 = ev] <{{$ 0}}> ev)
   by (simpl;rewrite Hev ; split ; [apply is_val_of_val|reflexivity]).
   apply Hsafe_fv in H.
   simpl in H.
@@ -463,13 +480,13 @@ Proof.
 Qed.
 
 Lemma empty_type :
-  forall e, [] ⊢ e ∈ <{ ∀ _ , #0 }>
+  forall e, [] ⊢ e ∈ ( ∀ _ , $0 )
        -> safe_parametrized (fun e => False) <{ (e _ )}>.
 Proof.
   intros e Htyped.
-  eapply fundamental_theorem with (ξ := nil) (σ := nil) in Htyped
+  eapply fundamental_theorem with (ξ := nil) (γ:= nil) in Htyped
   ;[| constructor].
-  replace e.[env_subst []] with e in Htyped by (by asimpl).
+  replace e.[fun_subst []] with e in Htyped by (by asimpl).
   replace <{ e _ }> with (fill (TAppCtx EmptyCtx ) e) by auto.
   eapply safe_bind;eauto.
   intros v (f & -> & Hsafe_f).
