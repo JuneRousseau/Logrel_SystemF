@@ -86,25 +86,26 @@ Qed.
 
 Lemma is_val_of_val: forall v, is_val (of_val v).
 Proof.
-  intros.
-  induction v; simpl.
-  apply v_unit.
-  apply v_pair; done.
-  apply v_lam.
-  apply v_tlam.
+  induction v; simpl; by constructor.
 Qed.
 
 
 Declare Custom Entry sf.
+Declare Custom Entry ty.
 Notation "<{ e }>" := e (e custom sf at level 99).
+Notation "<{{ e }}>" := e (e custom ty at level 99).
+Notation "( x )" := x (in custom sf, x at level 99).
+Notation "( x )" := x (in custom ty, x at level 99).
 Notation "x" := x (in custom sf at level 0, x constr at level 0).
-Notation "S -> T" := (Ty_Arrow S T) (in custom sf at level 50, right associativity).
-Notation "S × T" := (Ty_Pair S T) (in custom sf at level 50, right associativity).
-Notation "'()'" := Ty_Unit (in custom sf at level 0).
-Notation "∀ '_' , T" := (Ty_Forall T) (in custom sf at level 50).
-Coercion expr_var : var >-> expr.
-Notation "'#' n" := (Ty_Var n) (in custom sf at level 50).
+Notation "x" := x (in custom ty at level 0, x constr at level 0).
+Notation "S -> T" := (Ty_Arrow S T) (in custom ty at level 50, right associativity).
+Notation "S × T" := (Ty_Pair S T) (in custom ty at level 50, right associativity).
+Notation "'()'" := Ty_Unit (in custom ty at level 0).
+Notation "∀ '_' , T" := (Ty_Forall T) (in custom ty at level 50).
+Notation "'$' n" := (Ty_Var n) (in custom ty at level 50).
+
 Notation "'tt'" := expr_unit (in custom sf at level 0).
+Notation "'#' n" := (expr_var n) (in custom sf at level 50).
 Notation "'⟨' e1 ',' e2 '⟩'" := (expr_pair e1 e2) (in custom sf at level 90,
                                       e1 at level 99,
                                       e2 at level 99).
@@ -122,32 +123,31 @@ Notation "'Λ' e" :=
         left associativity).
 
 
-(* Use gmap ? My own partial map ? list ? *)
-Require Import List.
 Definition get {T} (Gamma : list T) (n : var) : option T :=
   nth_error Gamma n.
-Definition context := list ty.
 
 (** The typing context Γ is an ordered list of type,
-    where the nth element is the type of (expr_var n) *)
-(** There is no context of type variable Δ because they are managed by
-    (ty_var n) where n is an autosubst variable. *)
+    where the n-th element is the type of <{ n }> *)
+Definition typing_context := list ty.
+Implicit Types Γ : typing_context.
 
-Reserved Notation "Γ '⊢' t '∈' T"
-  (at level 101, t custom sf, T custom sf at level 0).
-Inductive typing_judgment : context -> expr -> ty -> Prop :=
+Reserved Notation "Γ '⊢' e '∈' τ"
+  (at level 101, e custom sf, τ custom ty at level 0).
+(** There is no context of type variable Δ, because they are managed
+    by (ty_var n) where n is an autosubst variable. *)
+Inductive typing_judgment : typing_context -> expr -> ty -> Prop :=
 | T_Unit: forall Γ , Γ ⊢ tt ∈ ()
 (* A variable is well-typed if it exists a type in the typing context Γ *)
-| T_Var: forall Γ x τ, (get Γ x) = Some τ -> Γ ⊢ (expr_var x) ∈ τ
+| T_Var: forall Γ x τ, (get Γ x) = Some τ -> Γ ⊢ (# x) ∈ τ
 | T_Prod: forall Γ e1 τ1 e2 τ2,
   Γ ⊢ e1 ∈ τ1
   -> Γ ⊢ e2 ∈ τ2
-  -> Γ ⊢ ⟨e1, e2⟩ ∈ <{ τ1 × τ2 }>
+  -> Γ ⊢ ⟨e1, e2⟩ ∈ (τ1 × τ2)
 | T_Fst: forall Γ e τ1 τ2,
-  Γ ⊢ e ∈ <{ τ1 × τ2 }>
+  Γ ⊢ e ∈ (τ1 × τ2)
   -> Γ ⊢ fst e ∈ τ1
 | T_Snd: forall Γ e τ1 τ2,
-  Γ ⊢ e ∈ <{ τ1 × τ2 }>
+  Γ ⊢ e ∈ (τ1 × τ2)
   -> Γ ⊢ snd e ∈ τ2
 (* A lambda abstraction (λx.e) is well-typed if, by adding the type of the
    argument in the typing context, the expression e is well-typed.
@@ -156,9 +156,9 @@ Inductive typing_judgment : context -> expr -> ty -> Prop :=
    will represents the binding to this 'x'. *)
 | T_Lam: forall Γ e τ1 τ2,
   (τ1 :: Γ) ⊢ e ∈ τ2
-  -> Γ ⊢ (expr_lam e) ∈ <{ τ1 -> τ2 }>
+  -> Γ ⊢ (λ _, e) ∈ (τ1 -> τ2)
 | T_App: forall Γ f e τ1 τ2,
-  Γ ⊢ f ∈ <{ τ1 -> τ2 }>
+  Γ ⊢ f ∈ (τ1 -> τ2)
   -> Γ ⊢ e ∈ τ1
   -> Γ ⊢ f e ∈ τ2
 (* A type-lambda abstraction {(Λ e) : ∀ α, τ} is well-typed if, by adding the
@@ -169,13 +169,11 @@ Inductive typing_judgment : context -> expr -> ty -> Prop :=
    variable. *)
 | T_TLam: forall Γ e τ,
   (map (rename (+1)) Γ) ⊢ e ∈ τ
-  -> Γ ⊢ Λ e ∈ <{ ∀ _ , τ }>
+  -> Γ ⊢ Λ e ∈ ( ∀ _ , τ )
 | T_TApp: forall Γ e τ τ',
-  Γ ⊢ e ∈ <{ ∀ _ , τ }>
+  Γ ⊢ e ∈ ( ∀ _ , τ )
   -> typing_judgment Γ (expr_tapp e) τ.[τ'/]
 where "Γ '⊢' e '∈' τ" := (typing_judgment Γ e τ).
-
-Notation "( x )" := x (in custom sf, x at level 99).
 
 Lemma is_val_inversion : forall e, is_val e -> exists v, e = (of_val v).
 Proof.
