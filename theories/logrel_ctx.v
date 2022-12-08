@@ -183,65 +183,87 @@ Proof.
   intros * Hcontext Hsafe; by constructor.
 Qed.
 
-Lemma logrel_subst_generalized τ :
-  forall ξ1 ξ2 τ' v,
-  (logrel_val (ξ1++ξ2) τ.[upn (length ξ1) (τ'.: ids)] v)
-  <-> (logrel_val (ξ1 ++ (logrel_val ξ2 τ')::ξ2) τ v).
+Lemma upn_lt n (f : var -> ty) x :
+  x < n ->
+  upn n f x = ids x.
 Proof.
-  induction τ; intros *.
-  + (* var *)
-    rename v into x.
-    rename v0 into v.
-    asimpl in *.
-    (* revert x ξ1 ξ2 τ' v. *)
-    (* induction ξ1;intros;cbn. *)
-    admit.
-  + (* unit *)
-    auto.
-  + (* pair *)
-    split; intro Hsafe
-    ; destruct Hsafe as (v1 & v2 & Hval1 & Hval2 & -> & Hsafe1 & Hsafe2)
-    ; exists v1, v2
-    ; repeat(split;auto).
-    all: (try by apply IHτ1).
-    all: (try by apply IHτ2).
-  + (* lambda *)
-    split; intros [? Hsafe];simpl
-    ; destruct Hsafe as (-> & Hsafe)
-    ; exists x; split; auto;intros.
-    all: eapply safe_mono;[intros|eapply Hsafe].
-    all: (try by apply IHτ1).
-    all: (try by apply IHτ2).
-  + (* poly *)
-    split ; intros [? Hsafe] ;simpl
-    ; destruct Hsafe as (-> & Hsafe)
-    ; exists x; split;auto;intros.
-    all: eapply safe_mono;[intros|eapply (Hsafe P)].
-    all: try by eapply (IHτ (_::_)).
-Admitted.
+  revert f x.
+  induction n;intros.
+  - lia.
+  - destruct x; asimpl;auto.
+    apply Nat.succ_lt_mono in H.
+    apply (IHn f) in H.
+    rewrite H.
+    by asimpl.
+Qed.
 
-
-(* Cannot be done naively: the induction hypothesis for type lambda abstraction
-   is not strong enough ! *)
-Lemma logrel_subst ξ τ τ' v :
-  (logrel_val ξ τ.[τ'/] v )
-  <-> (logrel_val ((logrel_val ξ τ')::ξ) τ v).
+Lemma upn_ge n (f : var -> ty) x :
+  x >= n ->
+  upn n f x = (f (x - n)).[ren (+n)].
 Proof.
-  apply logrel_subst_generalized with (ξ1 := nil).
+  revert f x.
+  induction n;intros.
+  - replace (x-0) with x by lia.
+    asimpl; auto.
+  - destruct x; asimpl;auto;try lia.
+    assert (x >= n) by lia.
+    apply (IHn f) in H0.
+    rewrite H0.
+    by asimpl.
 Qed.
 
 
-Lemma logrel_val_incr_generalized τ :
-  forall ξ1 ξ2 e P,
+
+
+Lemma logrel_val_weaken_generalized :
+  forall ξ ξ1 ξ2 τ e,
   logrel_val (ξ1 ++ ξ2) τ e ↔
-  logrel_val (ξ1 ++ P :: ξ2) (τ.[upn (length ξ1) (ren (+ 1))]) e.
+  logrel_val (ξ1 ++ ξ ++ ξ2) (τ.[upn (length ξ1) (ren (+ (length ξ)))]) e.
 Proof.
+  intros * ; revert ξ ξ1 ξ2 e.
   induction τ;intros.
   - (* Var *)
-    admit.
-    (* split;intros Hsafe;cbn in *. *)
-    (* + simpl in *. destruct Hsafe. admit. *)
-    (* + split; [by eapply safe_is_val|]. admit. *)
+    asimpl.
+    rename v into x.
+    destruct (dec_lt x (length ξ1)) as [Hx|Hx].
+    + (* x is in ξ1 *)
+      pose proof Hx as H; eapply upn_lt in H; erewrite H;clear H.
+      replace (ids x) with (Ty_Var x);auto;cbn.
+      rewrite !nth_error_app1;eauto.
+    + (* x is not in ξ1 *)
+      apply not_lt in Hx.
+      pose proof Hx as H; eapply upn_ge in H; erewrite H;clear H.
+      apply le_lt_or_eq in Hx.
+      destruct Hx as [Hx | Hx] ;cycle 1.
+      * (* x is exactly after ξ1, ie it gets τ' *)
+        rewrite nth_error_app2;[|lia].
+        subst.
+        rewrite Nat.sub_diag;asimpl.
+        replace (ids (length ξ1 + length ξ)) with (Ty_Var (length ξ1 + length ξ));auto;cbn.
+        rewrite nth_error_app2;[|lia].
+        rewrite nth_error_app2;[|lia].
+        replace (length ξ1 + length ξ - length ξ1 - length ξ) with 0 by lia.
+        firstorder.
+      * (* x is in ξ2 *)
+        cbn.
+        rewrite nth_error_app2;[|lia].
+        destruct (x - length ξ1) eqn:contra;try lia;clear contra.
+        match goal with
+        | h: _ |- _ <-> V[_] ?t e =>
+            replace t with (Ty_Var (S (length ξ1 + length ξ + n))) by (asimpl;auto)
+        end.
+        destruct (list_eq_nil_dec (ξ1 ++ ξ ++ ξ2)) as [Heq|Hneq].
+        ** rewrite Heq
+           ; apply app_eq_nil in Heq
+           ; destruct Heq as [_ Heq]
+           ; apply app_eq_nil in Heq
+           ; destruct Heq as [_ Heq]; subst; auto.
+        ** unfold logrel_val.
+        rewrite nth_error_app2;[|lia].
+        rewrite nth_error_app2;[|lia].
+        replace (S (length ξ1 + length ξ + n) - length ξ1 - length ξ)
+          with (S n) by lia.
+        firstorder.
   - (* Unit *) by cbn in *.
   - (* Pair *) cbn in *.
     split;intros H
@@ -275,19 +297,98 @@ Proof.
       | h: _ |- _ => idtac
     end
     ; intros
-    ; specialize (IHτ (P0::ξ1) ξ2 e P); asimpl in *
+    ; specialize (IHτ ξ (P::ξ1) ξ2 e); asimpl in *
     ; by eapply IHτ.
-Admitted.
+Qed.
 
-Lemma logrel_val_incr :
-  forall τ ξ e P,
+Lemma logrel_val_weaken ξ1 ξ2 τ e :
+  logrel_val ξ2 τ e <->
+  logrel_val (ξ1++ξ2) τ.[ren (+length ξ1)] e.
+Proof.
+  erewrite (logrel_val_weaken_generalized ξ1 nil ξ2 _ e); simpl; by asimpl.
+Qed.
+
+(* The renaming ensures that the type does not appears free *)
+Lemma logrel_val_weaken' ξ τ e P :
   logrel_val ξ τ e <->
   logrel_val (P :: ξ) (rename (+1) τ) e.
 Proof.
-  intros.
-  pose proof (logrel_val_incr_generalized τ nil ξ e P) as H; simpl in H.
-  rewrite upn0 in H; asimpl in *.
-  apply H.
+  asimpl in *; apply (logrel_val_weaken [P] ξ τ e).
+Qed.
+
+Lemma logrel_subst_generalized τ :
+  forall ξ1 ξ2 τ' v,
+  (logrel_val (ξ1++ξ2) τ.[upn (length ξ1) (τ'.: ids)] v)
+  <-> (logrel_val (ξ1 ++ (logrel_val ξ2 τ')::ξ2) τ v).
+Proof.
+  induction τ; intros *.
+  + (* var *)
+    rename v into x.
+    rename v0 into v.
+    asimpl.
+    destruct (dec_lt x (length ξ1)) as [Hx|Hx].
+    - (* x is in ξ1 *)
+      pose proof Hx as H; eapply upn_lt in H; erewrite H;clear H.
+      replace (ids x) with (Ty_Var x);auto;cbn.
+      unfold get.
+      rewrite nth_error_app1;eauto.
+      rewrite nth_error_app1;eauto.
+    - (* x is not in ξ1 *)
+      apply not_lt in Hx.
+      pose proof Hx as H; eapply upn_ge in H; erewrite H;clear H.
+      apply le_lt_or_eq in Hx.
+      destruct Hx as [Hx | Hx] ;cycle 1.
+      * (* x is exactly after ξ1, ie it gets τ' *)
+        rewrite nth_error_app2;[|lia].
+        subst.
+        rewrite Nat.sub_diag;asimpl.
+        rewrite <- logrel_val_weaken.
+        firstorder. by eapply safe_is_val.
+      * (* x is in ξ2 *)
+        cbn.
+        rewrite nth_error_app2;[|lia].
+        destruct (x - length ξ1) eqn:contra;try lia;clear contra.
+        asimpl in *.
+        replace (V[ξ1 ++ ξ2] (ids (length ξ1 + n)) v)
+          with (is_val v ∧
+                  match nth_error (ξ1 ++ ξ2) (length ξ1 + n) with
+                  | Some P => P v
+                  | None => True
+                  end) by auto.
+        rewrite nth_error_app2;[|lia].
+        replace (length ξ1 + n - length ξ1) with n by lia.
+        auto.
+  + (* Unit *) auto.
+  + (* pair *)
+    split; intro Hsafe
+    ; destruct Hsafe as (v1 & v2 & Hval1 & Hval2 & -> & Hsafe1 & Hsafe2)
+    ; exists v1, v2
+    ; repeat(split;auto).
+    all: (try by apply IHτ1).
+    all: (try by apply IHτ2).
+  + (* lambda *)
+    split; intros [? Hsafe];simpl
+    ; destruct Hsafe as (-> & Hsafe)
+    ; exists x; split; auto;intros.
+    all: eapply safe_mono;[intros|eapply Hsafe].
+    all: (try by apply IHτ1).
+    all: (try by apply IHτ2).
+  + (* poly *)
+    split ; intros [? Hsafe] ;simpl
+    ; destruct Hsafe as (-> & Hsafe)
+    ; exists x; split;auto;intros.
+    all: eapply safe_mono;[intros|eapply (Hsafe P)].
+    all: try by eapply (IHτ (_::_)).
+Qed.
+
+
+(* Cannot be done naively: the induction hypothesis for type lambda abstraction
+   is not strong enough ! *)
+Lemma logrel_subst ξ τ τ' v :
+  (logrel_val ξ τ.[τ'/] v )
+  <-> (logrel_val ((logrel_val ξ τ')::ξ) τ v).
+Proof.
+  apply logrel_subst_generalized with (ξ1 := nil).
 Qed.
 
 Lemma sem_subst_weaken :
@@ -302,7 +403,7 @@ Proof.
   - apply sem_subst_cons_r_inv in H.
     destruct H as (e & σ' & -> & Hsafe & Hcontext).
     apply sem_subst_cons;auto.
-    by apply logrel_val_incr.
+    by apply logrel_val_weaken'.
 Qed.
 
 
