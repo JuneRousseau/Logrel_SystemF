@@ -1,12 +1,10 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
-From Coq Require Import Relations.Relation_Operators.
-From stdpp Require Import gmap list.
+From stdpp Require Import list relations.
 Require Import Autosubst.Autosubst.
 From logical_relation Require Import syntax_systemF opsem_systemF_ctx.
 
 (*** Logical relation for type
      soundness of SystemF *)
-
 Implicit Types Γ : typing_context.
 Implicit Types τ : ty.
 
@@ -34,8 +32,8 @@ Proof.
     + by apply IHγ.
 Qed.
 
-(** Safe parametrized by P
-    cf Section 4. Safe_{P}(e) *)
+(** SAFE PARAMETRIZED *)
+(* Safe parametrized by P cf Section 4. Safe_{P}(e) *)
 Definition safe_parametrized (P : expr -> Prop) (e : expr) :=
   forall e', e ~>* e' ->
         (is_val e' /\ P e') \/ (exists e'', e' ~> e'').
@@ -45,7 +43,6 @@ Lemma safe_mono (P Q : expr -> Prop) e:
   -> safe_parametrized P e
   -> safe_parametrized Q e.
 Proof.
-  unfold safe_parametrized.
   intros mono_val safe_P e' step.
   apply safe_P in step; destruct step as [ [val_e' Pe'] | Hstep ]
   ;[left;split|] ;auto.
@@ -54,7 +51,6 @@ Proof.
 Lemma safe_val (P : expr -> Prop) e:
   is_val e -> P e -> safe_parametrized P e.
 Proof.
-  unfold safe_parametrized.
   intros e_val P_e e' step.
   apply is_val_step in step;subst;auto.
 Qed.
@@ -64,7 +60,6 @@ Lemma safe_step (P : expr -> Prop) e e' :
   safe_parametrized P e' ->
   safe_parametrized P e.
 Proof.
-  unfold safe_parametrized.
   intros step safe_e' e'' step'.
   generalize dependent e'.
   induction step'; intros.
@@ -81,15 +76,14 @@ Lemma safe_bind K e P Q :
 Proof.
   intros safeQ safeP.
   intros e' Hstep.
-  unfold safe_parametrized in safeQ.
-  apply mstep_ectx in Hstep as [(e'' & -> & Hstep)|(v & Hv & Hv1 & Hv2)].
+  apply mstep_fill in Hstep as [(e'' & -> & Hstep)|(v & Hv & Hv1 & Hv2)].
   - apply safeQ in Hstep.
     destruct Hstep as [(Hv & HQv)|(e3 & He3)].
-    + apply safeP in HQv; apply HQv. constructor.
-    + right. eexists. eapply step_fill; eauto.
+    + apply safeP in HQv; apply HQv; constructor.
+    + right. eexists; eapply step_in_ectx; eauto.
   - apply safeQ in Hv1.
     destruct Hv1 as [(_ & HQv)|(e3 & He3)].
-    + apply safeP in HQv; apply HQv. auto.
+    + apply safeP in HQv; apply HQv; auto.
     + eapply is_val_stuck in Hv. by apply Hv in He3.
 Qed.
 
@@ -123,12 +117,7 @@ end.
 
 Notation "V[ ξ ]" := (logrel_val ξ) (at level 0, format "V[ ξ ]").
 
-(** We define the semantic substitution.
-We say that the substitution γ satisfies the typing context Γ. *)
-Definition sem_subst P γ Γ : Prop := Forall2 P Γ γ.
-Notation "γ '⊨(' P ')' Γ" := (sem_subst P γ Γ) (at level 0, format "γ '⊨(' P ')' Γ").
-
-Lemma safe_is_val ξ v τ :
+Lemma logrel_is_val ξ v τ :
   logrel_val ξ τ v -> is_val v.
 Proof.
   induction τ; simpl ; intros; try destruct H as (?&?);auto.
@@ -138,8 +127,14 @@ Proof.
   - destruct H as (?&?); subst; by constructor.
 Qed.
 
+(** We define the semantic substitution.
+We say that the substitution γ satisfies the typing context Γ. *)
+Definition sem_subst P γ Γ : Prop := Forall2 P Γ γ.
+Notation "γ '⊨(' P ')' Γ" := (sem_subst P γ Γ) (at level 0, format "γ '⊨(' P ')' Γ").
+
+(** SEMANTIC SUBSTITUTION LEMMAS *)
 (* If γ satisfies Γ, and the variable x is in Γ, then
-   x is also in γ, and respect the right property *)
+    x is also in γ, and respect the right property *)
 Lemma get_sem_subst:
   forall P Γ γ (x : var) τ,
   γ ⊨(P) Γ ->
@@ -181,6 +176,7 @@ Proof.
   intros * Hcontext Hsafe; by constructor.
 Qed.
 
+(** WEAKENING *)
 Lemma upn_lt n (f : var -> ty) x :
   x < n ->
   upn n f x = ids x.
@@ -210,8 +206,8 @@ Proof.
     by asimpl.
 Qed.
 
-
-
+Lemma ids_var : forall n, ids n = Ty_Var n.
+Proof. intros;auto. Qed.
 
 Lemma logrel_val_weaken_generalized :
   forall ξ ξ1 ξ2 τ e,
@@ -226,43 +222,39 @@ Proof.
     destruct (dec_lt x (length ξ1)) as [Hx|Hx].
     + (* x is in ξ1 *)
       pose proof Hx as H; eapply upn_lt in H; erewrite H;clear H.
-      replace (ids x) with (Ty_Var x);auto;cbn.
-      rewrite !nth_error_app1;eauto.
+      rewrite ids_var;simpl.
+      rewrite !get_app_l;eauto.
     + (* x is not in ξ1 *)
       apply not_lt in Hx.
       pose proof Hx as H; eapply upn_ge in H; erewrite H;clear H.
       apply le_lt_or_eq in Hx.
       destruct Hx as [Hx | Hx] ;cycle 1.
       * (* x is exactly after ξ1, ie it gets τ' *)
-        rewrite nth_error_app2;[|lia].
         subst.
+        rewrite get_app_r;[|lia].
         rewrite Nat.sub_diag;asimpl.
-        replace (ids (length ξ1 + length ξ)) with (Ty_Var (length ξ1 + length ξ));auto;cbn.
-        rewrite nth_error_app2;[|lia].
-        rewrite nth_error_app2;[|lia].
+        rewrite ids_var;simpl.
+        rewrite get_app_r;[|lia].
+        rewrite get_app_r;[|lia].
         replace (length ξ1 + length ξ - length ξ1 - length ξ) with 0 by lia.
         firstorder.
       * (* x is in ξ2 *)
         cbn.
-        rewrite nth_error_app2;[|lia].
+        rewrite ids_var.
+        rewrite get_app_r;[|lia].
         destruct (x - length ξ1) eqn:contra;try lia;clear contra.
-        match goal with
-        | h: _ |- _ <-> V[_] ?t e =>
-            replace t with (Ty_Var (S (length ξ1 + length ξ + n))) by (asimpl;auto)
-        end.
         destruct (list_eq_nil_dec (ξ1 ++ ξ ++ ξ2)) as [Heq|Hneq].
         ** rewrite Heq
-           ; apply app_eq_nil in Heq
-           ; destruct Heq as [_ Heq]
-           ; apply app_eq_nil in Heq
-           ; destruct Heq as [_ Heq]; subst; auto.
-        ** unfold logrel_val.
-        rewrite nth_error_app2;[|lia].
-        rewrite nth_error_app2;[|lia].
-        replace (S (length ξ1 + length ξ + n) - length ξ1 - length ξ)
+           ; apply app_eq_nil in Heq ; destruct Heq as [_ Heq]
+           ; apply app_eq_nil in Heq ; destruct Heq as [_ Heq]
+           ; subst; simpl; rewrite get_nil;tauto.
+        ** simpl logrel_val.
+        rewrite get_app_r;[|lia].
+        rewrite get_app_r;[|lia].
+        replace (length ξ1 + (length ξ + S n) - length ξ1 - length ξ)
           with (S n) by lia.
         firstorder.
-  - (* Unit *) by cbn in *.
+  - (* Unit *) auto.
   - (* Pair *) cbn in *.
     split;intros H
     ; destruct H as (e1&e2&Hval1&Hval2&->&Hsafe1&Hsafe2)
@@ -314,6 +306,22 @@ Proof.
   asimpl in *; apply (logrel_val_weaken [P] ξ τ e).
 Qed.
 
+Lemma sem_subst_weaken :
+  forall ξ Γ γ P,
+  (γ ⊨(V[ξ]) Γ) ->
+  (γ ⊨(V[P::ξ]) (map (rename (+1)) Γ)).
+Proof.
+  intros.
+  generalize dependent γ.
+  induction Γ;intros.
+  - by inversion H; subst; apply Forall2_nil.
+  - apply sem_subst_cons_r_inv in H.
+    destruct H as (e & σ' & -> & Hsafe & Hcontext).
+    apply sem_subst_cons;auto.
+    by apply logrel_val_weaken'.
+Qed.
+
+(** SUBSTITUTION LEMMA *)
 Lemma logrel_subst_generalized τ :
   forall ξ1 ξ2 τ' v,
   (logrel_val (ξ1++ξ2) τ.[upn (length ξ1) (τ'.: ids)] v)
@@ -327,35 +335,28 @@ Proof.
     destruct (dec_lt x (length ξ1)) as [Hx|Hx].
     - (* x is in ξ1 *)
       pose proof Hx as H; eapply upn_lt in H; erewrite H;clear H.
-      replace (ids x) with (Ty_Var x);auto;cbn.
-      unfold get.
-      rewrite nth_error_app1;eauto.
-      rewrite nth_error_app1;eauto.
+      rewrite ids_var.
+      simpl.
+      rewrite get_app_l;auto.
+      rewrite get_app_l;auto.
     - (* x is not in ξ1 *)
       apply not_lt in Hx.
       pose proof Hx as H; eapply upn_ge in H; erewrite H;clear H.
       apply le_lt_or_eq in Hx.
       destruct Hx as [Hx | Hx] ;cycle 1.
       * (* x is exactly after ξ1, ie it gets τ' *)
-        rewrite nth_error_app2;[|lia].
+        rewrite get_app_r;[|lia].
         subst.
         rewrite Nat.sub_diag;asimpl.
         rewrite <- logrel_val_weaken.
-        firstorder. by eapply safe_is_val.
+        firstorder. by eapply logrel_is_val.
       * (* x is in ξ2 *)
-        cbn.
-        rewrite nth_error_app2;[|lia].
+        rewrite get_app_r;[|lia].
         destruct (x - length ξ1) eqn:contra;try lia;clear contra.
-        asimpl in *.
-        replace (V[ξ1 ++ ξ2] (ids (length ξ1 + n)) v)
-          with (is_val v ∧
-                  match nth_error (ξ1 ++ ξ2) (length ξ1 + n) with
-                  | Some P => P v
-                  | None => True
-                  end) by auto.
-        rewrite nth_error_app2;[|lia].
+        simpl.
+        rewrite get_app_r;[|lia].
         replace (length ξ1 + n - length ξ1) with n by lia.
-        auto.
+        tauto.
   + (* Unit *) auto.
   + (* pair *)
     split; intro Hsafe
@@ -379,7 +380,6 @@ Proof.
     all: try by eapply (IHτ (_::_)).
 Qed.
 
-
 (* Cannot be done naively: the induction hypothesis for type lambda abstraction
    is not strong enough ! *)
 Lemma logrel_subst ξ τ τ' v :
@@ -389,22 +389,8 @@ Proof.
   apply logrel_subst_generalized with (ξ1 := nil).
 Qed.
 
-Lemma sem_subst_weaken :
-  forall ξ Γ γ P,
-  (γ ⊨(V[ξ]) Γ) ->
-  (γ ⊨(V[P::ξ]) (map (rename (+1)) Γ)).
-Proof.
-  intros.
-  generalize dependent γ.
-  induction Γ;intros.
-  - by inversion H; subst; apply Forall2_nil.
-  - apply sem_subst_cons_r_inv in H.
-    destruct H as (e & σ' & -> & Hsafe & Hcontext).
-    apply sem_subst_cons;auto.
-    by apply logrel_val_weaken'.
-Qed.
 
-
+(** FTLR *)
 Theorem fundamental_theorem :
   forall Γ τ e ,
   Γ ⊢ e ∈ τ ->
@@ -421,7 +407,7 @@ Proof.
     eapply get_sem_subst in H;eauto.
     destruct H as (e& ? & Hsafe).
     replace (fγ x) with e by (by symmetry; apply env_subst_get).
-    assert (Hval: is_val e) by (by eapply safe_is_val).
+    assert (Hval: is_val e) by (by eapply logrel_is_val).
     apply safe_val;auto.
   - (* T_Prod *)
     simpl subst.
@@ -434,13 +420,13 @@ Proof.
     eapply safe_bind;eauto.
     intros ve1 Hsafe_ve1.
     simpl fill.
-    assert (is_val ve1) by (by eapply safe_is_val).
+    assert (is_val ve1) by (by eapply logrel_is_val).
     apply is_val_inversion in H2. destruct H2 as [v1 ->].
     replace (expr_pair (of_val v1) es2) with (fill (RPairCtx EmptyCtx v1) es2)
     by auto.
     eapply safe_bind;eauto.
     intros ve2 Hsafe_ve2.
-    assert (is_val ve2) by (by eapply safe_is_val).
+    assert (is_val ve2) by (by eapply logrel_is_val).
     apply is_val_inversion in H2. destruct H2 as [v2 ->].
     simpl fill.
     intros e' He'.
@@ -484,10 +470,9 @@ Proof.
     split; auto.
     intros e' Hsafe.
     pose proof Hsafe as Hval_e'.
-    apply safe_is_val in Hval_e'.
+    apply logrel_is_val in Hval_e'.
     eapply safe_step with (e' := (e.[up fγ].[e'/])) ; eauto.
     subst fγ; asimpl.
-    Unset Printing Notations.
     apply (sem_subst_cons V[ξ] Γ γ e' τ1) in H0;auto.
     by apply IHtyping_judgment in H0;cbn in H0.
   - (* T_App *)
@@ -502,14 +487,14 @@ Proof.
     eapply safe_bind;eauto .
     intros fv Hfv.
     simpl fill.
-    assert (is_val fv) by (by eapply safe_is_val).
+    assert (is_val fv) by (by eapply logrel_is_val).
     apply is_val_inversion in H2. destruct H2 as [vf ->].
     replace (expr_app (of_val vf) arg) with (fill (RAppCtx EmptyCtx vf) arg)
     by auto.
     eapply safe_bind;eauto.
     intros argv Hargv.
     simpl fill.
-    assert (is_val argv) by (by eapply safe_is_val).
+    assert (is_val argv) by (by eapply logrel_is_val).
     apply is_val_inversion in H2. destruct H2 as [v ->].
     destruct Hfv as (fe & -> & Hsafe_app).
     by apply Hsafe_app.

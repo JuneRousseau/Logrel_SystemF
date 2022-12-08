@@ -1,6 +1,8 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
-From stdpp Require Import gmap list.
+From stdpp Require Import list.
 Require Import Autosubst.Autosubst.
+
+(*** Syntax of SystemF *)
 
 Inductive ty : Type :=
 | Ty_Var : var -> ty
@@ -68,7 +70,7 @@ Inductive is_val : expr -> Prop :=
 
 Hint Constructors is_val : core.
 
-(** Equality  *)
+(** Lemmas about value *)
 Lemma to_of_val v : to_val (of_val v) = Some v.
 Proof.
   by induction v; simplify_option_eq; repeat f_equal; try apply (proof_irrel _).
@@ -97,6 +99,18 @@ Proof.
      by left; constructor.
    - left; constructor.
    - left; constructor.
+Qed.
+
+Lemma of_val_injective : forall e1 e2,
+of_val e1 = of_val e2 -> e1 = e2.
+Proof.
+  induction e1; intros; destruct e2;cbn in H; auto; try discriminate;injection H
+  ;intros.
+  - apply IHe1_1 in H1;subst.
+    apply IHe1_2 in H0;subst.
+    reflexivity.
+  - by subst.
+  - by subst.
 Qed.
 
 Declare Custom Entry sf.
@@ -131,9 +145,17 @@ Notation "'Λ' e" :=
         e custom sf at level 99,
         left associativity).
 
+Definition get {T} (Γ : list T) (n : var) : option T := nth_error Γ n.
 
-Definition get {T} (Gamma : list T) (n : var) : option T :=
-  nth_error Gamma n.
+Lemma get_app_l {T} (Γ Γ' : list T) n : n < length Γ -> get (Γ++Γ') n = get Γ n.
+Proof. apply nth_error_app1. Qed.
+
+Lemma get_app_r {T} (Γ Γ' : list T) n
+  : length Γ <= n  -> get (Γ++Γ') n = get Γ' (n - length Γ).
+Proof. apply nth_error_app2. Qed.
+
+Lemma get_nil {T} : forall n, get ([] : list T) n = None.
+Proof. intros; induction n ; auto. Qed.
 
 (** The typing context Γ is an ordered list of type,
     where the n-th element is the type of <{ n }> *)
@@ -184,13 +206,15 @@ Inductive typing_judgment : typing_context -> expr -> ty -> Prop :=
   -> typing_judgment Γ (expr_tapp e) τ.[τ'/]
 where "Γ '⊢' e '∈' τ" := (typing_judgment Γ e τ).
 
-Lemma is_val_inversion : forall e, is_val e -> exists v, e = (of_val v).
+Lemma is_val_inversion : forall e, is_val e <-> exists v, e = (of_val v).
 Proof.
-  intros.
-  induction e;inversion H
-  ;[ exists val_unit | | eexists (val_lam _ )
-     | eexists (val_tlam _) ]; eauto.
-  apply IHe1 in H2; apply IHe2 in H3.
-  destruct H2; destruct H3; subst.
-  exists (val_pair x x0); eauto.
+  split;intros.
+  - (* -> *)
+    induction e;inversion H
+    ;[ exists val_unit | | eexists (val_lam _ ) | eexists (val_tlam _) ]
+    ; eauto.
+    apply IHe1 in H2; apply IHe2 in H3.
+    destruct H2; destruct H3; subst.
+    exists (val_pair x x0); eauto.
+  - (* <- *) destruct H as [? ->];apply is_val_of_val.
 Qed.

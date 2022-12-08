@@ -1,10 +1,9 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
-From Coq Require Import Relations.Relation_Operators.
-From stdpp Require Import gmap list.
+From stdpp Require Import list relations.
 Require Import Autosubst.Autosubst.
 From logical_relation Require Import syntax_systemF opsem_systemF_ctx logrel.
 
-(** Free theorems *)
+(*** Free theorems *)
 
 Lemma identity_function :
   forall e ev v, ev = (of_val v)

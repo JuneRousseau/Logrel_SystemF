@@ -1,8 +1,14 @@
 Set Warnings "-notation-overridden,-parsing,-deprecated-hint-without-locality".
-From Coq Require Import Relations.Relation_Operators.
-From stdpp Require Import gmap list.
+From stdpp Require Import list relations.
 Require Import Autosubst.Autosubst.
 From logical_relation Require Import syntax_systemF.
+
+(*** Operational semantic of SystemF
+     --- w/o evaluation context *)
+
+(** This version is short and incomplete on purpose, as it is used for
+    only as an equivalent semantic of the version with evaluation context
+    to prove determinism *)
 
 Reserved Notation "t '~>' t'" (at level 60).
 Inductive step : expr -> expr -> Prop :=
@@ -22,20 +28,16 @@ Inductive step : expr -> expr -> Prop :=
 | step_fst : forall e e',
   e ~> e' ->
   <{ fst e }> ~>  <{ fst e' }>
-
 | step_snd : forall e e',
   e ~> e' ->
   <{ snd e }> ~>  <{ snd e' }>
-
 | step_pairL : forall e1 e1' e2,
   e1 ~> e1' ->
   <{ ⟨ e1, e2 ⟩ }> ~>  <{ ⟨ e1', e2 ⟩  }>
-
 | step_pairR : forall v e e',
   is_val v ->
   e ~> e' ->
   <{ ⟨ v, e ⟩ }> ~>  <{ ⟨ v, e' ⟩  }>
-
 | step_lam_head : forall f f' e,
   f ~> f' ->
   <{ f e }> ~>  <{ f' e }>
@@ -49,9 +51,6 @@ Inductive step : expr -> expr -> Prop :=
 where "t '~>' t'" := (step t t').
 Hint Constructors step : core.
 
-Definition mstep :=  clos_refl_trans_1n expr step.
-Notation "t '~>*' t'" := (mstep t t') (at level 60).
-
 (** Properties in the operational semantic *)
 Lemma is_val_stuck : forall e e', is_val e -> not (e ~> e').
 Proof.
@@ -60,12 +59,6 @@ Proof.
   induction e; intros e' step; try inversion val_e;inversion step; subst.
   - eapply IHe1 in H1; eapply H1; eauto.
   - eapply IHe2 in H2; eapply H2; eauto.
-Qed.
-
-Lemma is_val_step : forall e e', is_val e -> e ~>* e' -> e' = e.
-  intros e e' val_e mstep.
-  inversion mstep; subst; auto.
-  by apply is_val_stuck in H.
 Qed.
 
 Lemma sf_deterministic : forall e e1 e2, e ~> e1 -> e ~> e2 -> e1 = e2.
