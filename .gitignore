@@ -8,3 +8,7 @@
 /.Makefile.coq.d
 /.Makefile.d
 /Makefile.conf
+/report.bbl
+/report.pdf
+/report.tex
+/theories/.lia.cache

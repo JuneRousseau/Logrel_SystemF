@@ -1,0 +1,127 @@
+#+title: Formalizing SystemF type safety with logical relation in Coq
+#+AUTHOR: June Rousseau
+
+\begin{abstract}
+Milner wrote "Well-typed does not go wrong". Type safety is a language property
+that ensure that if a program is well-typed, it is safe to execute, ie. it will
+not be stuck.
+Logical relations are a proof method that have been efficient to prove
+language properties, such as type safety.
+During the lecture in class, we have defined and used a logical relation as a
+proof method in order to prove the type safety of SystemF.
+Everything on paper, and we assumed some intermediate lemmas. Some data
+structures and encoding remained implicit. If one wants to have full trust on a
+proof, we want to explicit every minutes details and prove every lemma used.
+Proof-assistant as Coq helps to track each of them and make sure that every
+proof goal is proved.
+The project consists on implementing the logical relation in Coq and prove the
+type safety of SystemF using the logical relation.
+\end{abstract}
+
+* Introduction
+Type safety by naive induction does not work, because the induction hypothesis
+is too weak.
+Usual methods to prove type safety are based on the intermediates
+properties so called /progress/ and /preservation/.
+The former says that if an expression is well-typed and not a value, it can do a
+step. The later says that if an expression is well-typed, the next step will
+also be well-typed.
+However, another method based on logical relation (why is it better?).
+
+
+* SystemF, type safety and logical relation on paper
+In this section, we write down the syntax, typing judgment, operational
+semantic, logical relation and main theorem.
+Mainly taken from [Amin lecture notes], and adapted to the Coq implementation.
+
+* Implementation in Coq
+In this section, we expose the different implementation choices. Describe the
+different solutions I had in mind and explain why I made these choices.
+** SystemF (evaluation context)
+The operational semantic of SystemF follows a call-by-value evaluation strategy,
+small step semantic.
+I had in mind two possible solutions to implement SystemF CBV.
+1. A semantic that explicit every single rule: for each expression, we define a
+   rule that describes its reduction.
+2. A semantic in two steps: a head reduction relation, which expresses how to
+   reduce the relation when the redex is in head position; and a non-head
+   reduction relation, when the redex is not is the head position. The
+   evaluation context determine where the redex is in the term.
+
+The two semantics are equivalent (cf. proof), and both implementations have
+their own pros and cons. The induction is easier when the semantic describes
+every single rules, but we have to prove the (safe bind lemma ?) on the fly for
+each induction case in the fundamental theorem. On the other hand, the
+evaluation context semantic is convenient to define the generalized (safe bind
+lemma), but the induction cases are more tedious to use. (why ? induction,
+inversion and so on).
+
+In the end, I used the second semantic to focus on the implementation of the
+logical relation, as well as the intermediate lemmas.
+
+** Binders (autosubst)
+Binders er træls.
+Implementation of the binders using strings, but it was really a pain to work
+with the simultaneous substitution, and I struggle to define the substitution
+lemma correctly. Also, up-to-renaming.
+Binders are a well-known issue when implementing a language (cf. TAPL).
+DeBruijn representation of the binders. Canonical and unique representation of
+the binder. Nameless representation in which a variable points directly to its
+binder: the named variables are replaced by a natural number that express the
+distance to its binder. More precisely, the DeBruijn index k points to the k-th
+enclosing \lambda.
+Examples.
+
+Implementation using autosubst, a Coq library which automatize the DeBruijn
+representation, and automatically prove some basic lemma about the (parallel
+substitution). Provide tactics for the substitution operation.
+
+Example of lemma that was hard to prove with named binders, but easier with
+autosubst ?
+
+** N-steps
+Why did I need to define a n-step reduction relation.
+
+** Substitution lemma
+Substitution lemma that was assumed in the lecture notes. Naive induction does
+not work: the IH is not strong enough. Generalization of the lemma.
+
+
+* Possible improvement / Future work
+** Language independent lemmas
+Some lemmas are not SystemF specific. We could define a class that express what
+is a valid language, giving:
+- the type of expression of the language $expr$
+- a function $is\_value: expr \rightarrow Prop$ that express which expression are the values
+  of the language
+- a function $head\_step: expr \rightarrow expr \rightarrow Prop$ that express the head reduction
+  relation
+- a function $is\_ectx: (expr \rightarrow expr) \rightarrow Prop$ that express how to
+  determine the evaluation context when the redex is not in head position
+
+Which properties on the language are necessary for the language to be valid ?
+All the "safe" lemmas (safe-mono, safe-val, safe-bind, safe-step) should be
+language independent. Thus, these are free lemmas once we have proved that
+SystemF CBV is a valid language, and we could re-use them for other language
+(e.g. STLC)
+
+** Logical relation using Iris
+Iris provides a nice framework to define logical relation. Because step-indexed
+logic, we can extend SystemF with recursive types and pointer.
+
+** Normalization STLC / SystemF
+Another interesting language property that can be proved using logical relation
+is normalization.
+
+
+* Ideas :noexport:
+** SystemF type safety with logical relation
+    As we have seen in the lecture
+** Formalize directly Amin's lecture note from the lecture
+** Use strings to represent the binders as a first step
+But the simultaneous substitution was a pain to work with
+** Replace string binders with De Bruijn binders, using autosubst
+** Remaining work
+- Bunch of intermediate lemmas about substitution to prove
+- Main type safety theorem
+- Free theorems ?
