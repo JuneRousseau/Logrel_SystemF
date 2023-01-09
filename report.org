@@ -24,14 +24,27 @@ type safety of SystemF using the logical relation.
 #+TOC: headlines 2
 
 * Introduction
-Type safety by naive induction does not work, because the induction hypothesis
-is too weak.
-Usual methods to prove type safety are based on the intermediates
-properties so called /progress/ and /preservation/.
-The former says that if an expression is well-typed and not a value, it can do a
-step. The later says that if an expression is well-typed, the next step will
-also be well-typed.
-However, another method based on logical relation (why is it better?).
+Type safety --- also known as /type soundness/ --- is a language property
+ensuring that well-typed terms will never reach a stuck state. A naive approach
+to prove type safety of a language is to proceed by induction on the structure
+of type. However, this approach fails, because the induction hypothesis is too
+weak.
+In the literature, type safety is commonly proved using two auxiliary lemmas
+known as /progress/ and /preservation/ (citations?). The former says that if an
+expression is well-typed, it is either a value, or it can perform a step. The
+later says that if an expression is well-typed, the next step will also be
+well-typed.
+Another way to prove type safety of SystemF is based on logical relation techniques.
+Logical relation is a proof method that scales better on more expressive
+language (*TODO CHECK?*) and that can be used to prove others language
+properties, such as normalization, contextual equivalence or non-interference.
+Moreover, the fundamental theorem of logical relation has useful consequences
+besides type safety.
+
+Defining logical relation on paper requires to keep track of plenty of minute
+details. It is easy to miss an important detail, or to badly assume a lemma on
+the relation. In order to get more confidence in our proof, one can use computer
+proof-assistant, such as Coq, to help keeping track of all these details.
 
 This report is organized as follows:
 In section 2, we formalize the language SystemF (semantic and typing judgment),
@@ -44,8 +57,8 @@ Coq, as well as possible extensions of the project.
 
 The Coq implementation is available online:
 https://github.com/BastienRousseau/Logrel_SystemF.
-We use circled numbers to link directly
-to corresponding Coq formal statements in the following.
+We use circled numbers to link directly to corresponding Coq formal statements
+in the following.
 
 * Type safety of SystemF on paper
 In this section, we formalize on paper the language SystemF as it has been
@@ -56,6 +69,9 @@ Most of the formalization is classic, mainly inspired by [Amin lecture notes]
 but we adapted it in order to correspond to the Coq implementation.
 
 ** Language
+The language we consider is a /variant/ of SystemF, that includes
+$\mathrm{unit}$ type and the product type with the projection.
+We define the semantic using a small-step semantic with a call-by-value strategy.
 Representation of the binder using DeBruijn index. More explanation about this
 choice in section 3.
 Explanation of the substitution.
