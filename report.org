@@ -1,5 +1,9 @@
 #+title: Formalizing SystemF type safety with logical relation in Coq
 #+AUTHOR: June Rousseau
+#+OPTIONS: toc:nil
+#+LATEX_HEADER: \usepackage{pftools}
+#+LATEX_HEADER: \usepackage{circledsteps}
+#+LATEX_HEADER: \newcommand{\link}[1]{\href{#1}{\cstep}}
 
 \begin{abstract}
 Milner wrote "Well-typed does not go wrong". Type safety is a language property
@@ -17,6 +21,7 @@ proof goal is proved.
 The project consists on implementing the logical relation in Coq and prove the
 type safety of SystemF using the logical relation.
 \end{abstract}
+#+TOC: headlines 2
 
 * Introduction
 Type safety by naive induction does not work, because the induction hypothesis
@@ -28,19 +33,87 @@ step. The later says that if an expression is well-typed, the next step will
 also be well-typed.
 However, another method based on logical relation (why is it better?).
 
+This report is organized as follows:
+In section 2, we formalize the language SystemF (semantic and typing judgment),
+the type safety property, the logical relation and we establish the main
+theorem. In section 3, we present the different implementation options, and we
+highlight the challenges of the implementation in Coq, contrasting with the
+paper version of the proof. Finally in section 4, we present
+improvement and alternatives of the implementation of the logical relation in
+Coq, as well as possible extensions of the project.
 
-* SystemF, type safety and logical relation on paper
-In this section, we write down the syntax, typing judgment, operational
-semantic, logical relation and main theorem.
-Mainly taken from [Amin lecture notes], and adapted to the Coq implementation.
+The Coq implementation is available online:
+https://github.com/BastienRousseau/Logrel_SystemF.
+We use circled numbers to link directly
+to corresponding Coq formal statements in the following.
+
+* Type safety of SystemF on paper
+In this section, we formalize on paper the language SystemF as it has been
+implemented in Coq. We present the call-by-value (CBV) small-step semantic and
+the typing judgment. Then, we formalize the type safety, the logical relation
+and we establish the main theorems.
+Most of the formalization is classic, mainly inspired by [Amin lecture notes]
+but we adapted it in order to correspond to the Coq implementation.
+
+** Language
+Representation of the binder using DeBruijn index. More explanation about this
+choice in section 3.
+Explanation of the substitution.
+
+\input{figures/syntaxSF}
+
+Focus on the rules \textsc{T-TAbs} because of the renaming.
+\input{figures/typingSF}
+
+** Type safety and logical relation
+*** Type safety
+A term is safe if, when it can perform a step (according to the operational
+semantic), it does not get stuck. In other words, the reduced expression is
+either a value, or it can do another step.
+We can also parameterize the safety predicate by a predicate $P$ on the values, such
+that the reduced expression is either a value that respect the predicate
+$P$, or it can do an additional step.
+Formally, the parameterized safety predicate:
+\[
+\mathrm{Safe_{P}}(e) \eqdef
+\forall e',\ e \step e' \Rightarrow (e' \in \mathrm{Val} \wedge P(v)) \vee \exists e'', e' \hstep e''
+\]
+
+The type safety of a language says that, as soon as a term is well-typed, the
+the term is safe.
+\[\forall e,\ \tau.\ \typed{\bullet}{e}{\tau} \Rightarrow \mathrm{Safe}(e) \]
+
+*** Logical relation
+We can prove type safety of SystemF using progress and preservation, but we use
+logical relation. We define the logical relation on induction on type as follows:
+
+\input{figures/logicalrelationSF}
+
+Using the previously defined logical relation, we can decompose the type safety
+theorem in two lemmas:
+- well-typed implies LR
+- LR implies type safe (trivial, because safety is baked in the LR)
+
+To prove the first lemma, we must generalized it, which gives us the so called
+*Fundamental Theorem of Logical Relation* (FTLR).
+
+*** Free theorems
+The FTLR has other consequences than just type safety. It can also be used to
+derive free theorems, /à la/ Wadler (cf. Theorem for free).
+We prove the two following theorems:
+- identity function
+\link{https://github.com/BastienRousseau/Logrel_SystemF/blob/fdab04fbb674a93b9b21aeb94efe3073a7de7521/theories/free_theorem.v#L8}
+- empty type
+\link{https://github.com/BastienRousseau/Logrel_SystemF/blob/fdab04fbb674a93b9b21aeb94efe3073a7de7521/theories/free_theorem.v#L35}
 
 * Implementation in Coq
-In this section, we expose the different implementation choices. Describe the
-different solutions I had in mind and explain why I made these choices.
+In this section, we expose the different implementations options that we had, we
+describes the solutions and explain the choices that we made.
+
 ** SystemF (evaluation context)
 The operational semantic of SystemF follows a call-by-value evaluation strategy,
 small step semantic.
-I had in mind two possible solutions to implement SystemF CBV.
+We had in mind two possible solutions to implement SystemF CBV.
 1. A semantic that explicit every single rule: for each expression, we define a
    rule that describes its reduction.
 2. A semantic in two steps: a head reduction relation, which expresses how to
@@ -56,21 +129,24 @@ evaluation context semantic is convenient to define the generalized (safe bind
 lemma), but the induction cases are more tedious to use. (why ? induction,
 inversion and so on).
 
-In the end, I used the second semantic to focus on the implementation of the
+In the end, we used the second semantic to focus on the implementation of the
 logical relation, as well as the intermediate lemmas.
 
 ** Binders (autosubst)
 Binders er træls.
 Implementation of the binders using strings, but it was really a pain to work
 with the simultaneous substitution, and I struggle to define the substitution
-lemma correctly. Also, up-to-renaming.
+(or weaken) lemma correctly. Also, up-to-renaming.
 Binders are a well-known issue when implementing a language (cf. TAPL).
 DeBruijn representation of the binders. Canonical and unique representation of
 the binder. Nameless representation in which a variable points directly to its
 binder: the named variables are replaced by a natural number that express the
 distance to its binder. More precisely, the DeBruijn index k points to the k-th
 enclosing \lambda.
-Examples.
+
+For example, we can encode the term
+$\lambda x.\ \lambda y.\ (x y)$ using the DeBruijn indices as $\lambda \_.\ \lambda \_.\ (1 0)$.
+Example of substitution.
 
 Implementation using autosubst, a Coq library which automatize the DeBruijn
 representation, and automatically prove some basic lemma about the (parallel
@@ -79,12 +155,35 @@ substitution). Provide tactics for the substitution operation.
 Example of lemma that was hard to prove with named binders, but easier with
 autosubst ?
 
+** Substitution and weakening lemmas
+One of the main property of the logical relation is the following /substitution
+lemma/. It states that
+a value $v$ is in the logical relation for the type $\tau.[\tau']$ iff we can
+associate its own logical relation to the corresponding free type variable in
+the interpretation mapping.
+
+(Substitution lemma)
+However, while the lecture notes uses strings to represent the free variable and
+can proceed by straightforward induction on $\tau$ (?), we cannot proceed directly
+by induction with our representation based on the DeBruijn indices. The
+induction hypothesis is indeed not strong enough.
+*TODO*: show the case that does not work and where the IH is not enough.
+The solution is first to show a generalized version of the substitution lemma,
+and then instantiate it to prove the substitution lemma.
+
+\link{https://github.com/BastienRousseau/Logrel_SystemF/blob/fdab04fbb674a93b9b21aeb94efe3073a7de7521/theories/logrel.v#L325}
+
+\[
+\forall \xi_{1},\ \xi_{2},\ \tau',\ v.\
+\lrv{ \xi_{1}++\xi_{2}}{ \tau.[\mathrm{upn}\ (\mathrm{len }\ \xi_{1}) \tau'/]}
+\Leftrightarrow
+\lrv{ \xi_{1}++( \lrp{\xi_{2}}{\tau'} ::\xi_{2})}{\tau}
+\]
+where $\tau.[\mathrm{upn}\ (\mathrm{len }\ \xi_{1}) \tau'/]$
+substitutes $\tau'$ in the type $\tau$ by renaming the variables *TODO*.
+
 ** N-steps
 Why did I need to define a n-step reduction relation.
-
-** Substitution lemma
-Substitution lemma that was assumed in the lecture notes. Naive induction does
-not work: the IH is not strong enough. Generalization of the lemma.
 
 
 * Possible improvement / Future work

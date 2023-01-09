@@ -1,0 +1,60 @@
+\newcommand{\hstep}{\rightsquigarrow}
+\newcommand{\step}{\rightarrow}
+\begin{figure}[ht]
+  $e ::= x\ |\ \mathrm{tt}\
+  |\ (e,e)\
+  |\ \mathrm{fst}\ e\
+  |\ \mathrm{snd}\ e\
+  |\ \lambda \_. e\
+  |\ e\ e\
+  |\ \Lambda e\
+  |\ e\ \_
+  $
+
+  $v ::= x\ |\ \mathrm{tt}\ |\ \lambda \_. e\ |\ \Lambda e$
+
+  $E ::= []\
+  |\ \mathrm{fst}\ E\
+  |\ \mathrm{snd}\ E\
+  |\ (E, e)\
+  |\ (v, E)\
+  |\ E\ e\
+  |\ v\ E\
+  |\ E\ \_
+  $
+
+  \centering
+  \begin{mathpar}
+    \inferH
+    {E-Fst}
+    {  }
+    {\mathrm{fst}\ (v_{1}, v_{2}) \hstep v_{1}}
+    \and
+
+    \inferH
+    {E-Snd}
+    {  }
+    {\mathrm{snd}\ (v_{1}, v_{2}) \hstep v_{2}}
+    \and
+
+    \inferH
+    {E-App}
+    {  }
+    { (\lambda \_. e)\ v \hstep e.[v/]}
+    \and
+
+    \inferH
+    {E-TApp}
+    {  }
+    { (\Lambda e)\ \_ \hstep e}
+    \and
+
+    \inferH
+    {E-Step}
+    {e \hstep e'}
+    {E[e] \step E[e']}
+  \end{mathpar}
+  \caption{\label{fig:opsemSF} Call-by-value small step semantic of systemF with
+    evaluation context. $\hstep$ is the head reduction relation. $\step$ is
+    the reduction relation.}
+\end{figure}

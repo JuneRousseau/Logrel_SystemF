@@ -1,0 +1,70 @@
+\newcommand{\typed}[3]{#1 \vdash #2 : #3}
+\begin{figure}[ht]
+  $\tau ::= \mathrm{unit}\
+  |\ \alpha\
+  |\ \tau \times \tau\
+  |\ \tau \rightarrow \tau\
+  |\ \forall \tau
+  $
+
+  \centering
+  \begin{mathpar}
+    \inferH
+    {T-Unit}
+    {  }
+    {\typed{\Gamma}{\mathrm{tt}}{\mathrm{unit}}}
+    \and
+
+    \inferH
+    {T-Var}
+    {\Gamma (x) = \tau}
+    {\typed{\Gamma}{x}{\tau}}
+    \and
+
+    \inferH
+    {T-Prod}
+    {\typed{\Gamma}{e_{1}}{\tau_{1}} \\ \typed{\Gamma}{e_{2}}{\tau_{2}}}
+    {\typed{\Gamma}{(e_{1}, e_{2})}{\tau_{1} \times \tau_{2}}}
+    \and
+
+    \inferH
+    {T-Fst}
+    {\typed{\Gamma}{e}{\tau_{1} \times \tau_{2}}}
+    {\typed{\Gamma}{\mathrm{fst}\ e}{\tau_{1}}}
+    \and
+
+    \inferH
+    {T-Snd}
+    {\typed{\Gamma}{e}{\tau_{1} \times \tau_{2}}}
+    {\typed{\Gamma}{\mathrm{snd}\ e}{\tau_{2}}}
+    \and
+
+    \inferH
+    {T-Abs}
+    {\typed{\tau_{1}, \Gamma}{e}{\tau_{2}}}
+    {\typed{\Gamma}{\lambda \_. e}{\tau_{1} \rightarrow \tau_{2}}}
+    \and
+
+    \inferH
+    {T-App}
+    {\typed{\Gamma}{e_{1}}{\tau_{2} \rightarrow \tau_{1}}
+      \\
+      \typed{\Gamma}{e_{2}}{\tau_{2}}}
+    {\typed{\Gamma}{e_{1}\ e_{2}}{\tau_{1}}}
+    \and
+
+    \inferH
+    {T-TAbs}
+    {\typed{\mathrm{map}\ (+1)\ \Gamma}{e}{\tau}}
+    {\typed{\Gamma}{\Lambda e}{\forall \_, \tau}}
+    \and
+
+    \inferH
+    {T-TApp}
+    {\typed{\Gamma}{\Lambda e}{\forall \_, \tau}}
+    {\typed{\Gamma}{e\ \_}{\tau.[\tau'/]}}
+    \and
+  \end{mathpar}
+
+  \caption{\label{fig:typingSF} Typing judgment of systemF}
+\end{figure}
