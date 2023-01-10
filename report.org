@@ -171,8 +171,17 @@ with $P = \mathrm{fun\ \tau\ e} \rightarrow \lr{\xi}{\tau}{e}$.
 The FTLR has other consequences than just type safety. It can also be used to
 derive free theorems, /à la/ Wadler (cf. Theorem for free).
 We prove the two following theorems:
-- identity function
-- empty type
+- any polymorphic expression that is typed with the identity type $\forall \alpha, \alpha \rightarrow \alpha$
+  is indeed the identity function, \ie if we apply the expression to a value
+  $v$, it will reduce the value $v$ itself\footnote{If it terminates}.
+  \[\forall e\ v,\ \typed{\bullet}{\forall \_.\ 0 \rightarrow 0}{e}
+  \Rightarrow \mathrm{Safe}_{(\mathrm{fun}\ e \rightarrow e = ev)}((e\ \_)\ v)
+  \]
+- any polymorphic expression that is typed with the type $\forall \alpha, \alpha$ is actually
+  the empty type, which is indeed uninhabited.
+  \[\forall e\ v,\ \typed{\bullet}{\forall \_.\ 0 }{e}
+  \Rightarrow \mathrm{Safe}_{(\mathrm{fun}\ e \rightarrow \bot )}(e\ \_)
+  \]
 
 * Implementation in Coq
 In this section, we expose the different implementations options that we had, we
