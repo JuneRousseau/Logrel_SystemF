@@ -85,9 +85,8 @@ an expression can be a variable $x \in \NN$, because the binder are DeBruijn
 indices. Roughly, the variable $k$ points to the /k/-th enclosing \lambda. Section 3
 will explain more precisely the reasons of this representation.
 The semantic is a small-step semantic with a call-by-value strategy. The
-notation $e.[v/]$ is the simultaneous (or parallel) substitution of the
-/first/ free variable: it replaces the free variable 0, and rename all the other
-variable consequently.
+notation $e.[v/]$ is the substitution of the /first/ free variable: it replaces
+the free variable 0, and rename all the other variable consequently.
 For instance, in the expression $(0,1).[\unitt/] = (\unitt, 0)$, the first free
 variable is 0, thus it replaces 0 by the expression $\unitt$. Moreover, the next
 free variable 1 is then renamed to 0. In the expression $1.[\unitt/] = 0$, the first
@@ -220,27 +219,41 @@ In the end, we used the second semantic to focus on the implementation of the
 logical relation, as well as the intermediate lemmas.
 
 ** Binders (autosubst)
-Binders er træls.
-Implementation of the binders using strings, but it was really a pain to work
-with the simultaneous substitution, and I struggle to define the substitution
-(or weaken) lemma correctly. Also, up-to-renaming.
-Binders are a well-known issue when implementing a language (cf. TAPL).
-DeBruijn representation of the binders. Canonical and unique representation of
-the binder. Nameless representation in which a variable points directly to its
-binder: the named variables are replaced by a natural number that express the
-distance to its binder. More precisely, the DeBruijn index k points to the k-th
-enclosing \lambda.
+Our first attempt to represent the binding was to implement them using strings.
+The advantage of representing the binder using strings is that it makes the
+proof --- especially on paper --- more readable.
+However, this representation tends to induces some issues because the terms are
+equals "up-to renaming of bound variable", and the substitution has to be
+capture avoiding.
+Moreover, we need to define the parallel (or simultaneous) substitution at some
+point, and use this definition to do Coq proof, which is a pain to work with
+when defined using strings.
 
-For example, we can encode the term
-$\lambda x.\ \lambda y.\ (x y)$ using the DeBruijn indices as $\lambda \_.\ \lambda \_.\ (1 0)$.
-Example of substitution.
+Because the binder representation using string is not satisfactory when
+implementing the language in Coq, we had to explore other binding
+representations. The question of the implementation of binders is a well-known
+issue when implementing a language (cf. TAPL). A solution is the DeBruijn
+representation of the binders. It is a canonical, unique and nameless
+representation of the binder, in which a variable points directly to its binder:
+the named variables are replaced by a natural number that express the distance
+to its binder. More precisely, the DeBruijn index k points to the k-th enclosing
+\lambda.
 
-Implementation using autosubst, a Coq library which automatize the DeBruijn
-representation, and automatically prove some basic lemma about the (parallel
-substitution). Provide tactics for the substitution operation.
+The De Bruijn techniques has been widely used to represent binders. /autosubst/
+is a Coq library that helps to implement and automatize the DeBruijn
+representation, and automatically derive and prove some basic lemma about the
+(parallel substitution). Provide tactics for the substitution operation.
 
-Example of lemma that was hard to prove with named binders, but easier with
-autosubst ?
+Our implementation uses /autosubst/ to represent the binders and leverage the
+automation to simplify the proofs, in particular for the substitution lemma and
+the weakening lemma.
+
+*TODO* should I use the string representation in Section 2, and explain the
+DeBruijn representation here instead ? Or here I only explain the reasons of my
+choice
+
+*TODO* Example of lemma that was hard to prove with named binders, but easier
+with autosubst ?
 
 ** Substitution and weakening lemmas
 One of the main property of the logical relation is the following /substitution
