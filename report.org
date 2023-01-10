@@ -257,20 +257,53 @@ with autosubst ?
 
 ** Substitution and weakening lemmas
 One of the main property of the logical relation is the following /substitution
-lemma/. It states that
-a value $v$ is in the logical relation for the type $\tau.[\tau']$ iff we can
-associate its own logical relation to the corresponding free type variable in
-the interpretation mapping.
+lemma/.
+\[
+\forall \xi,\ \tau,\ \tau',\ v.\
+\lrv{\xi}{ \tau.[\tau'/]}
+\Leftrightarrow
+\lrv{(\lrp{\xi}{\tau'}::\xi)}{\tau}
+\]
+It states that a value $v$ is in the logical relation for the type
+$\tau.[\tau'/]$ iff we can associate its own logical relation to the corresponding
+free type variable in the interpretation mapping.
 
-(Substitution lemma)
 However, while the lecture notes uses strings to represent the free variable and
 can proceed by straightforward induction on $\tau$ (?), we cannot proceed directly
 by induction with our representation based on the DeBruijn indices. The
 induction hypothesis is indeed not strong enough.
-*TODO*: show the case that does not work and where the IH is not enough.
-The solution is first to show a generalized version of the substitution lemma,
-and then instantiate it to prove the substitution lemma.
 
+The polymorphic type case does not work:
+let the induction hypothesis be
+\[
+\forall \xi,\ \tau,\ \tau',\ v.\
+\lrv{\xi}{ \tau.[\tau'/]}
+\Leftrightarrow
+\lrv{(\lrp{\xi}{\tau'}::\xi)}{\tau}
+\]
+
+The proof obligation for the polymorphic case is
+\[
+\lrv{\xi}{(\forall \_.\ \tau).[\tau'/]}
+\Leftrightarrow
+\lrv{(\lrp{\xi}{\tau'}::\xi)}{(\forall \_.\ \tau)}
+\]
+
+If we unfold the definition of the logical relation,
+the proof obligation roughly ends up to look like
+\[
+\lrv{P::\xi}{\tau.[\tau'/]}
+\Leftrightarrow
+\lrv{P::(\lrp{\xi}{\tau'}::\xi)}{\tau}
+\]
+where an additional predicate $P$ is the head of the mapping $\xi$.
+While we would like to use the IH, it is not possible because the head of the
+mapping has to be the property of the substituted type variable $\tau'$.
+
+The solution is then to generalized the substitution lemma, such that the
+predicate that maps the substituted type variable $\tau'$ to the logical relation
+may be anywhere in the new mapping. From a higher level, it means that had
+already gone through a certain number of type abstraction.
 
 \[
 \forall \xi_{1},\ \xi_{2},\ \tau',\ v.\
@@ -279,7 +312,9 @@ and then instantiate it to prove the substitution lemma.
 \lrv{ \xi_{1}++( \lrp{\xi_{2}}{\tau'} ::\xi_{2})}{\tau}
 \]
 where $\tau.[\mathrm{upn}\ (\mathrm{len }\ \xi_{1}) \tau'/]$
-substitutes $\tau'$ in the type $\tau$ by renaming the variables *TODO*.
+substitutes $\tau'$ in the type $\tau$ by renaming the variables after $(\mathrm{len }\ \xi_{1})$.
+It suffices to 1 the generalized theorem with $\xi_{1} = \mathrm{nil}$
+to get the substitution lemma.
 
 ** N-steps
 Why did I need to define a n-step reduction relation.
