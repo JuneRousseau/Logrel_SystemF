@@ -4,6 +4,8 @@
 #+LATEX_HEADER: \usepackage{pftools}
 #+LATEX_HEADER: \usepackage{circledsteps}
 #+LATEX_HEADER: \newcommand{\link}[1]{\href{#1}{\cstep}}
+#+LATEX_HEADER: \newcommand{\unit}{\text{unit}}
+#+LATEX_HEADER: \newcommand{\unitt}{\text{tt}}
 
 \begin{abstract}
 Milner wrote "Well-typed does not go wrong". Type safety is a language property
@@ -70,16 +72,40 @@ but we adapted it in order to correspond to the Coq implementation.
 
 ** Language
 The language we consider is a /variant/ of SystemF, that includes
-$\mathrm{unit}$ type and the product type with the projection.
-We define the semantic using a small-step semantic with a call-by-value strategy.
-Representation of the binder using DeBruijn index. More explanation about this
-choice in section 3.
-Explanation of the substitution.
-
+\unit type and the product type with the projection. The representation of the
+binders is based on DeBruijn index.
+In figure \label{fig:syntaxSF}, we define the syntax of the variant of SystemF we use
+in this project, as well as its operational semantic. The reader may notice that
+an expression can be a variable $x \in \NN$, because the binder are DeBruijn
+indices. Roughly, the variable $k$ points to the /k/-th enclosing \lambda. Section 3
+will explain more precisely the reasons of this representation.
+The semantic is a small-step semantic with a call-by-value strategy. The
+notation $e.[v/]$ is the simultaneous (or parallel) substitution of the
+/first/ free variable: it replaces the free variable 0, and rename all the other
+variable consequently.
+For instance, in the expression $(0,1).[\unitt/] = (\unitt, 0)$, the first free
+variable is 0, thus it replaces 0 by the expression $\unitt$. Moreover, the next
+free variable 1 is then renamed to 0. In the expression $1.[\unitt/] = 0$, the first
+free variable should be 0 (even if it does not appears in the expression), thus
+the substitution only perform the renaming.
+Finally, when there is lambda abstraction like in the expression,
+$(\lambda \_. (0,(1,2))).[\unitt/] = (\lambda \_. (0,(\unitt,1)))$, the substitution replace the
+first free variable under the lambda abstraction and the renaming as well.
+*TODO should i write the formal definition ?*.
 \input{figures/syntaxSF}
 
-Focus on the rules \textsc{T-TAbs} because of the renaming.
+Figure \label{fig:typingSF} shows the types and the typing rules of SystemF.
+In a similar way than the variable of the language, the type variable $\alpha \in \NN$
+use the DeBruijn representation.
+The typing rules are pretty usual, except the rule \textsc{T-TAbs} due to the
+DeBruijn representation of the type variable. Indeed, the type abstraction adds
+a new variable in the context, which means, in terms of DeBruijn indices, to
+shift the indices by 1. This is precisely what the rule \textsc{T-TAbs} do: it
+perform the right renaming.
+
 \input{figures/typingSF}
+
+*TODO transition sentence*
 
 ** Type safety and logical relation
 *** Type safety
@@ -118,9 +144,7 @@ The FTLR has other consequences than just type safety. It can also be used to
 derive free theorems, /à la/ Wadler (cf. Theorem for free).
 We prove the two following theorems:
 - identity function
-\link{https://github.com/BastienRousseau/Logrel_SystemF/blob/fdab04fbb674a93b9b21aeb94efe3073a7de7521/theories/free_theorem.v#L8}
 - empty type
-\link{https://github.com/BastienRousseau/Logrel_SystemF/blob/fdab04fbb674a93b9b21aeb94efe3073a7de7521/theories/free_theorem.v#L35}
 
 * Implementation in Coq
 In this section, we expose the different implementations options that we had, we
@@ -187,7 +211,6 @@ induction hypothesis is indeed not strong enough.
 The solution is first to show a generalized version of the substitution lemma,
 and then instantiate it to prove the substitution lemma.
 
-\link{https://github.com/BastienRousseau/Logrel_SystemF/blob/fdab04fbb674a93b9b21aeb94efe3073a7de7521/theories/logrel.v#L325}
 
 \[
 \forall \xi_{1},\ \xi_{2},\ \tau',\ v.\
@@ -200,7 +223,6 @@ substitutes $\tau'$ in the type $\tau$ by renaming the variables *TODO*.
 
 ** N-steps
 Why did I need to define a n-step reduction relation.
-
 
 * Possible improvement / Future work
 ** Language independent lemmas
@@ -227,7 +249,6 @@ logic, we can extend SystemF with recursive types and pointer.
 ** Normalization STLC / SystemF
 Another interesting language property that can be proved using logical relation
 is normalization.
-
 
 * Ideas :noexport:
 ** SystemF type safety with logical relation
