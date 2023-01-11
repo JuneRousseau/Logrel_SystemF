@@ -1,0 +1,16 @@
+\begin{figure}[ht]
+  $\xi ::= \bullet |\ P::\xi$
+    \begin{flalign*}
+      \lrv{\xi}{\tau_{1} \rightarrow \tau_{2}}
+      \eqdef&\
+              \exists e.\ v = \lambda.\ e \wedge
+              ( \forall v'.\ \lr{\xi}{\tau_{1}}{v'} \Rightarrow
+              \mathrm{Safe}_{\lrp{\xi}{\tau_{2}}}(e.[v'/]))\\
+      %
+      \lrv{\xi}{\forall.\ \tau}
+      \eqdef&\
+              \exists e.\ v = \Lambda e \wedge
+              ( \forall P.\ \mathrm{Safe}_{\lrp{(P::\xi)}{\tau}}(e))
+  \end{flalign*}
+  \caption{\label{fig:logrelDB} Modification of the logical relation due to the De Bruijn representation.}
+\end{figure}

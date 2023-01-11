@@ -1,0 +1,39 @@
+\begin{figure}[ht]
+
+  $k \in \NN$
+
+  $e ::= k\ |\ \lambda.\ e\ |\ \ldots$
+
+  $v ::= k\ |\ \lambda.\ e\ |\ \ldots$
+
+  $\alpha \in \NN$
+
+  $\tau ::= \alpha\ |\ \forall.\ \tau |\ \ldots$
+
+  $\Gamma ::= \bullet\ |\ \tau,\Gamma$
+
+  \centering
+  \begin{mathpar}
+    \inferH
+    {E-App-DeBruijn}
+    {  }
+    { (\lambda.\ e)\ v \hstep e.[v/]}
+    \and
+  \end{mathpar}
+
+  \begin{mathpar}
+    \inferH
+    {T-TAbs-DeBruijn}
+    {\typed{(\mathrm{map}\ (+1)\ \Gamma)}{e}{\tau}}
+    {\typed{\Gamma}{\Lambda e}{\forall.\ \tau}}
+    \and
+
+    \inferH
+    {T-TApp-DeBruijn}
+    {\typed{\Gamma}{\Lambda e}{\forall.\  \tau}}
+    {\typed{\Gamma}{e\ \_}{\tau.[\tau'/]}}
+    \and
+  \end{mathpar}
+
+  \caption{\label{fig:opsemDB} Modifications of the syntax, the operational semantic and the typing rules due to the De Bruijn representation of the binders.}
+\end{figure}

@@ -11,6 +11,9 @@
 #+LATEX_HEADER: \newcommand{\lr}[3]{\llbracket #2 \rrbracket_{#1}(#3)}
 #+LATEX_HEADER: \newcommand{\lrv}[2]{\lr{#1}{#2}{v}}
 #+LATEX_HEADER: \newcommand{\typed}[3]{#1 \vdash #2 : #3}
+#+LATEX_HEADER: \newcommand{\hstep}{\rightsquigarrow}
+#+LATEX_HEADER: \newcommand{\step}{\rightarrow}
+#+LATEX_HEADER: \newcommand{\mstep}{\step^{\ast}}
 \begin{abstract}
 Milner wrote "Well-typed does not go wrong". Type safety is a language property
 that ensure that if a program is well-typed, it is safe to execute, ie. it will
@@ -88,6 +91,7 @@ implementation.
 The semantic is a small-step semantic with a call-by-value strategy.
 The notation $e.[v/x]$ is the capture-avoiding substitution of the expression
 variable $x$ by the value $v$. The syntax and the semantic are standard.
+We note $\hstep$ the transitive closure of the non-head reduction relation.
 
 \input{figures/typingSF1}
 Figure \ref{fig:typingSF1} shows the types and the typing rules of SystemF.
@@ -104,12 +108,12 @@ safety.
 
 ** Type safety and logical relation
 *** Type safety
-A term is safe if, when it can perform a step (according to the operational
-semantic), it does not get stuck. In other words, the reduced expression is
-either a value, or it can do another step.
+A term is safe if, for any step it can perform (according to the operational
+semantic), it does not get stuck. In other words, any expression it can reduced to
+is either a value, or an expression that can do another step.
 \[
 \mathrm{Safe}(e) \eqdef
-\forall e',\ e \step e' \Rightarrow (e' \in \mathrm{Val}) \vee \exists e'', e' \hstep e''
+\forall e',\ e \mstep e' \Rightarrow (e' \in \mathrm{Val}) \vee \exists e'', e' \hstep e''
 \]
 We can also parameterize the safety predicate by a predicate $P$ on the values, such
 that the reduced expression is either a value that respect the predicate
@@ -117,11 +121,11 @@ $P$, or it can do an additional step.
 Formally, the parameterized safety predicate:
 \[
 \mathrm{Safe_{P}}(e) \eqdef
-\forall e',\ e \step e' \Rightarrow (e' \in \mathrm{Val} \wedge P(v)) \vee \exists e'', e' \hstep e''
+\forall e',\ e \mstep e' \Rightarrow (e' \in \mathrm{Val} \wedge P(v)) \vee \exists e'', e' \step e''
 \]
 
-The *type safety* of a language says that, as soon as a term is well-typed,
-the term is safe.
+The *type safety* of a language says that, as soon as a closed term is
+well-typed, the term is safe.
 \[\forall e,\ \tau.\ \typed{\bullet}{e}{\tau} \Rightarrow \mathrm{Safe}(e) \]
 
 *** Logical relation
