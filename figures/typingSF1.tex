@@ -5,7 +5,7 @@
   |\ \alpha\
   |\ \tau \times \tau\
   |\ \tau \rightarrow \tau\
-  |\ \forall \tau
+  |\ \forall \alpha.\ \tau
   $
 
   $\Gamma ::= \bullet\ |\ x:\tau,\Gamma$
@@ -62,7 +62,7 @@
     {T-TAbs}
     {\typed{\alpha, \Delta; \Gamma}{e}{\tau}
       \\
-      \mathrm{\alpha is not free in \Gamma}
+      \alpha \mathrm{\ is\ not\ free\ in\ }\Gamma}
     {\typed{ \Delta; \Gamma}{\Lambda e}{\forall \alpha, \tau}}
     \and
 
@@ -73,5 +73,5 @@
     \and
   \end{mathpar}
 
-  \caption{\label{fig:typingSF1} Typing judgment of systemF}
+  \caption{\label{fig:typingSF1} Type syntax and typing judgment of systemF}
 \end{figure}
