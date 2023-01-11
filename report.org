@@ -75,45 +75,42 @@ Most of the formalization is classic, mainly inspired by [Amin lecture notes]
 but we adapted it in order to correspond to the Coq implementation.
 
 ** Language
-The language we consider is a /variant/ of SystemF, that includes
-\unit type and the product type with the projection. The representation of the
-binders is based on DeBruijn index.
-\input{figures/syntaxSF}
-In figure \ref{fig:opsemSF}, we define the syntax of the variant of SystemF we use
-in this project, as well as its operational semantic. The reader may notice that
-an expression can be a variable $x \in \NN$, because the binder are DeBruijn
-indices. Roughly, the variable $k$ points to the /k/-th enclosing \lambda. Section 3
-will explain more precisely the reasons of this representation.
-The semantic is a small-step semantic with a call-by-value strategy. The
-notation $e.[v/]$ is the substitution of the /first/ free variable: it replaces
-the free variable 0, and rename all the other variable consequently.
-For instance, in the expression $(0,1).[\unitt/] = (\unitt, 0)$, the first free
-variable is 0, thus it replaces 0 by the expression $\unitt$. Moreover, the next
-free variable 1 is then renamed to 0. In the expression $1.[\unitt/] = 0$, the first
-free variable should be 0 (even if it does not appears in the expression), thus
-the substitution only perform the renaming.
-Finally, when there is lambda abstraction like in the expression,
-$(\lambda \_. (0,(1,2))).[\unitt/] = (\lambda \_. (0,(\unitt,1)))$, the substitution replace the
-first free variable under the lambda abstraction and the renaming as well.
-*TODO should i write the formal definition ?*.
+\input{figures/syntaxSF1}
+The language we consider is a variant of SystemF, that includes
+the unit type and the product type with the projection.
+In figure \ref{fig:opsemSF1}, we define the syntax and the operational semantic
+of the language we use in this project. The reader may notice that the
+expression variable are named binders represented as strings. In section 3, we
+will see another representation of the binder, based on De Bruijn technique, and
+we will explain why the named representation is not the best for the
+implementation.
 
-\input{figures/typingSF}
-Figure \ref{fig:typingSF} shows the types and the typing rules of SystemF.
-In a similar way than the variable of the language, the type variable $\alpha \in \NN$
-use the DeBruijn representation.
-The typing rules are pretty usual, except the rule \textsc{T-TAbs} due to the
-DeBruijn representation of the type variable. Indeed, the type abstraction adds
-a new variable in the context, which means, in terms of DeBruijn indices, to
-shift the indices by 1. This is precisely what the rule \textsc{T-TAbs} do: it
-perform the right renaming.
+The semantic is a small-step semantic with a call-by-value strategy.
+The notation $e.[v/x]$ is the capture-avoiding substitution of the expression
+variable $x$ by the value $v$. The syntax and the semantic are standard.
 
-*TODO transition sentence*
+\input{figures/typingSF1}
+Figure \ref{fig:typingSF1} shows the types and the typing rules of SystemF.
+We note $\typed{\Delta;\ \Gamma}{e}{\tau}$ the typing judgment saying that "$e$ is of type
+$\tau$ under the typing context $\Delta;\ \Gamma$".
+$\Gamma$ is the context of expression variables, that associate to each expression
+variable its type. $\Delta$ is the context of type variable, that gathers the free
+type variables. $\bullet$ is the empty context.
+Because the typing rules are standard, we will not extend the explanation too
+much.
+
+With the language defined, we can focus on a property of this language, the type
+safety.
 
 ** Type safety and logical relation
 *** Type safety
 A term is safe if, when it can perform a step (according to the operational
 semantic), it does not get stuck. In other words, the reduced expression is
 either a value, or it can do another step.
+\[
+\mathrm{Safe}(e) \eqdef
+\forall e',\ e \step e' \Rightarrow (e' \in \mathrm{Val}) \vee \exists e'', e' \hstep e''
+\]
 We can also parameterize the safety predicate by a predicate $P$ on the values, such
 that the reduced expression is either a value that respect the predicate
 $P$, or it can do an additional step.
@@ -123,17 +120,18 @@ Formally, the parameterized safety predicate:
 \forall e',\ e \step e' \Rightarrow (e' \in \mathrm{Val} \wedge P(v)) \vee \exists e'', e' \hstep e''
 \]
 
-The type safety of a language says that, as soon as a term is well-typed, the
+The *type safety* of a language says that, as soon as a term is well-typed,
 the term is safe.
 \[\forall e,\ \tau.\ \typed{\bullet}{e}{\tau} \Rightarrow \mathrm{Safe}(e) \]
-where $\mathrm{Safe}(e) = \mathrm{Safe}_{(\mathrm{fun \_} \Rightarrow\ \top)}(e)$
 
 *** Logical relation
 As explained in Section 1, we can prove type safety of SystemF using progress
-and preservation, but in our case, we use logical relation. We note the logical
-relation $\lr{\xi}{\tau}{v}$, where $\xi \in \mathrm{var} \rightarrow (\mathrm{expr} \rightarrow \PP)$ maps
-variable to an expression property.
-We define the logical relation on induction on type in Figure \ref{fig:logrelSF}.
+and preservation, but in our case, we use logical relation.
+We note the logical relation $\lr{\xi}{\tau}{v}$. $\xi$ is a mapping from type variable
+to an expression property $P \in (\mathrm{expr} \rightarrow \PP)$
+\[\xi ::= \bullet\ |\ (\alpha \mapsto P) :: \xi\]
+
+We define the logical relation by induction on the structure of type in Figure \ref{fig:logrelSF}.
 \input{figures/logicalrelationSF}
 
 The proof method based on logical relation decompose the type safety theorem in
@@ -152,19 +150,51 @@ Relation* (FTLR).
 
 To define the FTLR, we first need to introduce the semantic substitution.
 We note $\gamma$ a substitution, which maps expression variables to
-expressions, and $\Gamma$ the typing context, which maps expression variables their
-type.
+expressions.
+\[\gamma ::= \bullet\ |\ (x \mapsto e) :: \gamma\]
+
 We say that the substitution $\gamma$ satisfies the typing context $\Gamma$ for the
 predicate $P \in \mathrm{type} \rightarrow \mathrm{expr} \rightarrow \PP$, written $\gamma \Mapsto_{P} \Gamma$,
-if for all variables \footnote{We assume that the domain of $\gamma$ and $\Gamma$ are equals.}
+if for all variables\footnote{We assume that the domain of $\gamma$ and $\Gamma$ are equals.}
 in $\gamma$, the predicate $P$ holds for the mapped expression and
 their corresponding type in $\Gamma$.
 
-The FTLR
-\[\forall e,\ \tau,\ \Gamma.\ \typed{\bullet}{e}{\tau} \Rightarrow
-(\forall \xi,\ \gamma.\ (\gamma \Mapsto_{P} \Gamma) \Rightarrow \lr{\xi}{e}{\gamma(\tau)}) \]
-with $P = \mathrm{fun\ \tau\ e} \rightarrow \lr{\xi}{\tau}{e}$.
+The *FTLR* states that if a closed term is well-typed, then for all substitution
+$\gamma$ that satisfies the typing context $\Gamma$ for the logical relation, then the
+term under the substitution $\gamma$ is in the logical relation.
+\[\forall e,\ \tau,\ \Delta,\ \Gamma.\ \typed{\Delta;\Gamma}{e}{\tau} \Rightarrow
+(\forall \xi,\ \gamma.\ (\gamma \Mapsto_{P} \Gamma) \Rightarrow \lr{\xi}{\tau}{\gamma(e)}) \]
+with $P = \lambda \tau,\ e.\ \lr{\xi}{\tau}{e}$.
 
+We highlight some important intermediate lemmas, and we let the reader refer to
+the Coq implementation or (Amin's lecture notes) for more details on the proof.
+
+**** Safe mono
+For any value predicates P and Q, and any expression e, the Safe predicate is
+monotone over the parameterized predicate
+\[ (\forall v.\ P(v) \Rightarrow Q(v)) \Rightarrow \mathrm{Safe}_{P}(e) \Rightarrow \mathrm{Safe}_{Q}(e) \]
+**** Safe val
+For any value predicates P that holds for a value v, the Safe predicate also
+holds.
+\[ P(v) \Rightarrow \mathrm{Safe}_{P}(v) \]
+**** Safe step
+For any expression e that steps to an expression e', the Safe predicate backward
+propagate for any value predicate P.
+\[ e \step e' \Rightarrow \mathrm{Safe}_{P}(e') \Rightarrow \mathrm{Safe}_{P}(e)\]
+**** Safe bind
+To prove that an expression $E[e]$ is Safe, it actually suffices to show that
+$E[v]$ is safe for any value v.
+\[\forall P\ Q\ e,\ \mathrm{Safe}_{Q}(e) \Rightarrow
+(\forall v,\ Q(v) \Rightarrow \mathrm{Safe}_{P}(E[v])) \Rightarrow
+\mathrm{Safe}_{P}(E[e])) \]
+**** Logrel subst
+*TODO*
+
+\[ \lrv{\xi}{\tau.[\tau'/\alpha]} \Leftrightarrow \lrv{(\alpha \mapsto \lrp{\xi}{\tau'})::\xi}{\tau} \]
+
+**** Logrel weaken
+If $\alpha$ is not free in $\tau$, we can associate any predicate $P$ to $\alpha$ in $\xi$
+\[ \lrv{\xi}{\tau} \Leftrightarrow \lrv{(\alpha \mapsto P)::\xi}{\tau} \]
 
 *** Free theorems
 The FTLR has other consequences than just type safety. It can also be used to
@@ -173,13 +203,13 @@ We prove the two following theorems:
 - any polymorphic expression that is typed with the identity type $\forall \alpha, \alpha \rightarrow \alpha$
   is indeed the identity function, \ie if we apply the expression to a value
   $v$, it will reduce the value $v$ itself\footnote{If it terminates}.
-  \[\forall e\ v,\ \typed{\bullet}{\forall \_.\ 0 \rightarrow 0}{e}
-  \Rightarrow \mathrm{Safe}_{(\mathrm{fun}\ e \rightarrow e = ev)}((e\ \_)\ v)
+  \[\forall e\ v,\ \typed{\bullet;\bullet}{\forall \alpha.\ \alpha \rightarrow \alpha}{e}
+  \Rightarrow \mathrm{Safe}_{(\lambda e.\ e = v)}((e\ \_)\ v)
   \]
 - any polymorphic expression that is typed with the type $\forall \alpha, \alpha$ is actually
   the empty type, which is indeed uninhabited.
-  \[\forall e\ v,\ \typed{\bullet}{\forall \_.\ 0 }{e}
-  \Rightarrow \mathrm{Safe}_{(\mathrm{fun}\ e \rightarrow \bot )}(e\ \_)
+  \[\forall e\ v,\ \typed{\bullet;\bullet}{\forall \_.\ 0 }{e}
+  \Rightarrow \mathrm{Safe}_{(\lambda e.\ \bot )}(e\ \_)
   \]
 
 * Implementation in Coq
@@ -219,6 +249,32 @@ In the end, we used the second semantic to focus on the implementation of the
 logical relation, as well as the intermediate lemmas.
 
 ** Binders (autosubst)
+
+an expression can be a variable $x \in \NN$, because the binder are DeBruijn
+indices. Roughly, the variable $k$ points to the /k/-th enclosing \lambda. Section 3
+will explain more precisely the reasons of this representation.
+
+The notation $e.[v/]$ is the substitution of the /first/ free variable: it
+replaces the free variable 0, and rename all the other variable consequently.
+For instance, in the expression $(0,1).[\unitt/] = (\unitt, 0)$, the first free
+variable is 0, thus it replaces 0 by the expression $\unitt$. Moreover, the next
+free variable 1 is then renamed to 0. In the expression $1.[\unitt/] = 0$, the first
+free variable should be 0 (even if it does not appears in the expression), thus
+the substitution only perform the renaming.
+Finally, when there is lambda abstraction like in the expression,
+$(\lambda \_. (0,(1,2))).[\unitt/] = (\lambda \_. (0,(\unitt,1)))$, the substitution replace the
+first free variable under the lambda abstraction and the renaming as well.
+*TODO should i write the formal definition ?*.
+
+In a similar way than the variable of the language, the type variable $\alpha \in \NN$
+use the DeBruijn representation.
+The typing rules are pretty usual, except the rule \textsc{T-TAbs} due to the
+DeBruijn representation of the type variable. Indeed, the type abstraction adds
+a new variable in the context, which means, in terms of DeBruijn indices, to
+shift the indices by 1. This is precisely what the rule \textsc{T-TAbs} do: it
+perform the right renaming.
+
+
 Our first attempt to represent the binding was to implement them using strings.
 The advantage of representing the binder using strings is that it makes the
 proof --- especially on paper --- more readable.

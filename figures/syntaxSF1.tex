@@ -2,18 +2,19 @@
 \newcommand{\step}{\rightarrow}
 \begin{figure}[ht]
 
-  $x \in mathrm{\NN}$
+  $x \in \mathrm{string}$
+
   $e ::= x\ |\ \mathrm{tt}\
   |\ (e,e)\
   |\ \mathrm{fst}\ e\
   |\ \mathrm{snd}\ e\
-  |\ \lambda.\ e\
+  |\ \lambda x. e\
   |\ e\ e\
   |\ \Lambda e\
   |\ e\ \_
   $
 
-  $v ::= x\ |\ \mathrm{tt}\ |\ \lambda.\ e\ |\ \Lambda e$
+  $v ::= x\ |\ \mathrm{tt}\ |\ \lambda \_. e\ |\ \Lambda e$
 
   $E ::= []\
   |\ \mathrm{fst}\ E\
@@ -42,7 +43,7 @@
     \inferH
     {E-App}
     {  }
-    { (\lambda.\ e)\ v \hstep e.[v/]}
+    { (\lambda x. e)\ v \hstep e.[v/x]}
     \and
 
     \inferH
@@ -56,7 +57,7 @@
     {e \hstep e'}
     {E[e] \step E[e']}
   \end{mathpar}
-  \caption{\label{fig:opsemSF} Call-by-value small step semantic of systemF with
+  \caption{\label{fig:opsemSF1} Call-by-value small step semantic of systemF with
     evaluation context. $\hstep$ is the head reduction relation. $\step$ is
     the reduction relation.}
 \end{figure}

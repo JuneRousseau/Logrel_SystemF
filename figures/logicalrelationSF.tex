@@ -12,14 +12,14 @@
       %
       \lrv{\xi}{\tau_{1} \rightarrow \tau_{2}}
       \eqdef&\
-              \exists e.\ v = \lambda \_.\ e \wedge
+              \exists e.\ v = \lambda x.\ e \wedge
               ( \forall v'.\ \lr{\xi}{\tau_{1}}{v'} \Rightarrow
-              \mathrm{Safe}_{\lrp{\xi}{\tau_{2}}}(e.[v'/]))\\
+              \mathrm{Safe}_{\lrp{\xi}{\tau_{2}}}(e.[v'/x]))\\
       %
-      \lrv{\xi}{\forall \_.\ \tau}
+      \lrv{\xi}{\forall \alpha.\ \tau}
       \eqdef&\
               \exists e.\ v = \Lambda e \wedge
-              ( \forall P.\ \mathrm{Safe}_{\lrp{(P::\xi)}{\tau}}(e))
+              ( \forall P.\ \mathrm{Safe}_{\lrp{((\alpha \mapsto P)::\xi)}{\tau}}(e))
   \end{flalign*}
   \caption{\label{fig:logrelSF} Logical relation }
 \end{figure}
