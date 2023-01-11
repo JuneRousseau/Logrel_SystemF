@@ -406,29 +406,104 @@ safety in Coq, which could lead to a convenient way to extend the language with
 non-trivial features.
 
 ** Language independent lemmas
-Some lemmas are not SystemF specific. We could define a class that express what
-is a valid language, giving:
+The main interest of the project was to implement type safety of SystemF in Coq,
+using logical relation. In Section 2.2, we defined the Safe (parameterized)
+predicate and few intermediate lemmas about this predicate. The attentive reader
+may have notice that the Safe predicate does not really depends on the language,
+on the contrary to the logical relation.
+
+We propose to make the implementation more generic and modular, such that we can
+define the Safe predicate independently to the language. In a Coq
+implementation, this result in the definition of a class that express what is a
+valid language. A generic language is a tuple of:
 - the type of expression of the language $expr$
-- a function $is\_value: expr \rightarrow Prop$ that express which expression are the values
-  of the language
+- a function $is\_value: expr \rightarrow Prop$ that express which expressions are the
+  values of the language
 - a function $head\_step: expr \rightarrow expr \rightarrow Prop$ that express the head reduction
   relation
 - a function $is\_ectx: (expr \rightarrow expr) \rightarrow Prop$ that express how to
   determine the evaluation context when the redex is not in head position
 
-Which properties on the language are necessary for the language to be valid ?
-All the "safe" lemmas (safe-mono, safe-val, safe-bind, safe-step) should be
-language independent. Thus, these are free lemmas once we have proved that
-SystemF CBV is a valid language, and we could re-use them for other language
-(e.g. STLC)
+The future work is to determine which properties (expressed in terms of the
+generic) are necessary to make the language a /valid/ language.
+By valid language, we mean a language that allows one to derive the properties
+over the Safe predicate, \ie safe-mono, safe-val, safe-bind and safe-step.
 
-** Normalization STLC / SystemF
-Another interesting language property that can be proved using logical relation
-is normalization.
+This improvement brings more modularity in the implementation. One can indeed
+define its own language, prove that the language is a valid language and the
+typeclass derives automatically the Safe predicates for free.
+Of course, our variant of SystemF would be an instance of such valid language.
+But we could easily extend the project with type safety of another language,
+such as Simply Typed Lambda Calculus (STLC) without proving the properties of
+Safe again.
+
+** Other language properties
+As mentioned earlier, logical relation is a proof technique that can be used to
+prove language properties. The properties we focused on in this project is type
+safety. We propose two others properties to extend the project.
+*** Normalization
+A term normalizes if it reduces to a value. Formally,
+\[\mathrm{Norm}(e) \eqdef \exists v \in \mathrm{Val}.\ e \step^{*} v\]
+and the parameterized version
+\[\mathrm{Norm}_{P}(e) \eqdef \exists v \in \mathrm{Val}.\ e \step^{*} v \wedge P(v)\]
+
+We can derive the lemmas equivalent to Safe-val, Safe-mono, Safe-bind and
+Safe-step for the Norm predicate. This extension could leverage the modularity
+of the previous proposition.
+
+*** Contextual equivalence
+Contextual equivalence, or observational equivalence, is a language property
+saying that, if two program are contextually equivalent, there does not exist
+any context able to differentiate the them. It is also a way to derive free
+theorems.
+
+Formally, the contextual equivalence is defined as follows:
+\[
+\typed{\Delta';\Gamma'}{e_{1} \approx^{\mathrm{ctx}} e_{2} }{\tau'}
+\eqdef
+ \forall E\ :\ (\Delta;\Gamma \vdash \tau) \Rightarrow (\bullet;\bullet \vdash \unit).\
+ (E[e_{1}] \Downarrow v \Leftrightarrow E[e_{2}] \Downarrow v)
+\]
+where $e \Downarrow v \eqdef e \mstep v$ and 
+\begin{mathpar}
+\inferH
+{Ctx-Typing}
+{\typed{\Delta;\Gamma}{e}{\tau}
+\\
+\typed{\Delta';\Gamma'}{E[e]}{\tau'}
+}
+{ E\ :\ (\Delta;\Gamma \vdash \tau) \Rightarrow (\Delta';\Gamma' \vdash \tau')}
+\end{mathpar}
+
+It states that two expressions $e_{1}$ and $e_{2}$ of type $\tau$ are contextually
+equivalent if and only if
+for any context that has a hole of type $\tau$, and produces a closed expression of
+type $\unit$ (see \ref{Ctx-Typing}), filling the hole with $e_{1}$ or $e_{2}$
+will both reduces to the same value $v$ (which actually has to be $\unitt$).
+
 
 ** Logical relation using Iris
-Iris provides a nice framework to define logical relation. Because step-indexed
-logic, we can extend SystemF with recursive types and pointer.
+Iris is a higher-order separation logic framework, implemented and verified in
+Coq. Iris as been shown to be an efficient framework to implement logical
+relation. In particular, an alternative way to implement the logical relation
+and prove type soundness of SystemF could have been to use the Iris framework.
+
+An extension of SystemF is to add recursive types. However, literature has shown
+that adding recursive types is a feature that lead to a non-trivial extension of
+the logical relation: indeed, we have defined the logical relation inductively
+on the structure of type, but unfolding a recursive type does not guarantee the
+resulting type to be smaller than the folded one. Thus, it is impossible to
+simply extend the logical relation defined in this project.
+Similarly, another extension of the language is to add pointer, which leads to a
+similar issue (we can encode the recursion through the heap, thanks to the
+Landin's knot technique).
+
+However, Iris is a step-indexed logic. It provides the logical tools to easily
+manage the recursive types. Moreover, because Iris is a logic of resources, it
+allows to define the resources of heap and easily implement the pointers.
+
+* Conclusion
+
 
 * Ideas :noexport:
 ** SystemF type safety with logical relation
