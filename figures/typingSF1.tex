@@ -1,75 +1,77 @@
 \begin{figure}[ht]
   $\alpha \in \mathrm{string}$
 
-  $\tau ::= \mathrm{unit}\
+  $\ty ::= \unit\
   |\ \alpha\
-  |\ \tau \times \tau\
-  |\ \tau \rightarrow \tau\
-  |\ \forall \alpha.\ \tau
+  |\ \typair{\ty}{\ty}\
+  |\ \tyarrow{\ty}{\ty}\
+  |\ \tyforall{\alpha}{\ty}\
   $
 
-  $\Gamma ::= \bullet\ |\ x:\tau,\Gamma$
+  $\exprctx ::= \empctx\ |\ x:\ty,\exprctx$
 
-  $\Delta ::= \bullet\ |\ \alpha,\Delta$
+  $\tyctx ::= \empctx\ |\ \alpha,\tyctx$
 
   \centering
   \begin{mathpar}
     \inferH
     {T-Unit}
     {  }
-    {\typed{ \Delta; \Gamma}{\mathrm{tt}}{\mathrm{unit}}}
+    {\typed{\tyctx; \exprctx}{\tt}{\tyunit}}
     \and
 
     \inferH
     {T-Var}
-    {\Gamma (x) = \tau}
-    {\typed{ \Delta; \Gamma}{x}{\tau}}
+    {\exprctx(x) = \ty}
+    {\typed{\tyctx; \exprctx}{x}{\ty}}
     \and
 
     \inferH
     {T-Prod}
-    {\typed{ \Delta; \Gamma}{e_{1}}{\tau_{1}} \\ \typed{ \Delta; \Gamma}{e_{2}}{\tau_{2}}}
-    {\typed{ \Delta; \Gamma}{(e_{1}, e_{2})}{\tau_{1} \times \tau_{2}}}
+    {\typed{\tyctx; \exprctx}{e_{1}}{\ty_{1}}
+      \\
+      \typed{\tyctx; \exprctx}{e_{2}}{\ty_{2}}}
+    {\typed{\tyctx; \exprctx}{\pair{e_{1}}{e_{2}}}{\typair{\ty_{1}}{\ty_{2}}}}
     \and
 
     \inferH
     {T-Fst}
-    {\typed{ \Delta; \Gamma}{e}{\tau_{1} \times \tau_{2}}}
-    {\typed{ \Delta; \Gamma}{\mathrm{fst}\ e}{\tau_{1}}}
+    {\typed{\tyctx; \exprctx}{e}{\typair{\ty_{1}}{\ty_{2}}}}
+    {\typed{\tyctx; \exprctx}{\fst{e}}{\ty_{1}}}
     \and
 
     \inferH
     {T-Snd}
-    {\typed{ \Delta; \Gamma}{e}{\tau_{1} \times \tau_{2}}}
-    {\typed{ \Delta; \Gamma}{\mathrm{snd}\ e}{\tau_{2}}}
+    {\typed{\tyctx; \exprctx}{e}{\typair{\ty_{1}}{\ty_{2}}}}
+    {\typed{\tyctx; \exprctx}{\snd{e}}{\ty_{2}}}
     \and
 
     \inferH
     {T-Abs}
-    {\typed{ \Delta; x:\tau_{1}, \Gamma}{e}{\tau_{2}}}
-    {\typed{ \Delta; \Gamma}{\lambda x. e}{\tau_{1} \rightarrow \tau_{2}}}
+    {\typed{ \tyctx; x:\ty_{1}, \exprctx}{e}{\ty_{2}}}
+    {\typed{ \tyctx; \exprctx}{\lam{x}{e}}{\tyarrow{\ty_{1}}{\ty_{2}}}}
     \and
 
     \inferH
     {T-App}
-    {\typed{ \Delta; \Gamma}{e_{1}}{\tau_{2} \rightarrow \tau_{1}}
+    {\typed{\tyctx; \exprctx}{e_{1}}{\tyarrow{\ty_{2}}{\ty_{1}}}
       \\
-      \typed{ \Delta; \Gamma}{e_{2}}{\tau_{2}}}
-    {\typed{ \Delta; \Gamma}{e_{1}\ e_{2}}{\tau_{1}}}
+      \typed{\tyctx; \exprctx }{e_{2}}{\ty_{2}}}
+    {\typed{\tyctx; \exprctx }{\app{e_{1}}{ e_{2}}}{\ty_{1}}}
     \and
 
     \inferH
     {T-TAbs}
-    {\typed{\alpha, \Delta; \Gamma}{e}{\tau}
+    {\typed{\alpha, \tyctx; \exprctx }{e}{\ty}
       \\
-      \alpha \mathrm{\ is\ not\ free\ in\ }\Gamma}
-    {\typed{ \Delta; \Gamma}{\Lambda e}{\forall \alpha, \tau}}
+      \alpha \mathrm{\ is\ not\ free\ in\ }\exprctx}
+    {\typed{\tyctx; \exprctx}{\tlam{e}}{\tyforall{\alpha}{\ty}}}
     \and
 
     \inferH
     {T-TApp}
-    {\typed{ \Delta; \Gamma}{\Lambda e}{\forall \alpha, \tau}}
-    {\typed{ \Delta; \Gamma}{e\ \_}{\tau.[\tau'/\alpha]}}
+    {\typed{\tyctx; \exprctx}{e}{\tyforall{\alpha}{\ty}}}
+    {\typed{\tyctx; \exprctx}{\tappc{e}}{\subst{\ty}{\ty'}{\alpha}}}
     \and
   \end{mathpar}
 

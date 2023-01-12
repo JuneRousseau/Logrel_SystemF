@@ -2,26 +2,28 @@
 
   $x \in \mathrm{string}$
 
-  $e ::= x\ |\ \mathrm{tt}\
+  $e ::= x\
+  |\ \tt\
   |\ (e,e)\
-  |\ \mathrm{fst}\ e\
-  |\ \mathrm{snd}\ e\
-  |\ \lambda x. e\
-  |\ e\ e\
-  |\ \Lambda e\
-  |\ e\ \_
+  |\ \pair{e}{e}\
+  |\ \fst{e}\
+  |\ \snd{e}\
+  |\ \lam{x}{e}\
+  |\ \app{e}{e}\
+  |\ \tlam{e}\
+  |\ \tapp{e}\
   $
 
-  $v ::= x\ |\ \mathrm{tt}\ |\ \lambda \_. e\ |\ \Lambda e$
+  $v ::= x\ |\ \tt\ |\ \lam{x}{e}\ |\ \tlam{e}$
 
-  $E ::= []\
-  |\ \mathrm{fst}\ E\
-  |\ \mathrm{snd}\ E\
-  |\ (E, e)\
-  |\ (v, E)\
-  |\ E\ e\
-  |\ v\ E\
-  |\ E\ \_
+  $\ctx ::= \empctx\
+  |\ \fst{\ctx}\
+  |\ \snd{\ctx}\
+  |\ \pair{\ctx}{e}\
+  |\ \pair{v}{\ctx}\
+  |\ \app{\ctx}{e}\
+  |\ \app{v}{\ctx}\
+  |\ \tapp{\ctx}\
   $
 
   \centering
@@ -29,31 +31,31 @@
     \inferH
     {E-Fst}
     {  }
-    {\mathrm{fst}\ (v_{1}, v_{2}) \hstep v_{1}}
+    {\fst{\pair{v_{1},v_{2}}} \hstep v_{1}}
     \and
 
     \inferH
     {E-Snd}
     {  }
-    {\mathrm{snd}\ (v_{1}, v_{2}) \hstep v_{2}}
+    {\snd{\pair{v_{1},v_{2}}} \hstep v_{2}}
     \and
 
     \inferH
     {E-App}
     {  }
-    { (\lambda x. e)\ v \hstep e.[v/x]}
+    { \app{(\lam{x}{e})}{v} \hstep \subst{e}{v}{x}}
     \and
 
     \inferH
     {E-TApp}
     {  }
-    { (\Lambda e)\ \_ \hstep e}
+    { \tapp{\tlam{e}} \hstep e}
     \and
 
     \inferH
     {E-Step}
     {e \hstep e'}
-    {E[e] \step E[e']}
+    {\ctxh{e} \step \ctxh{e'}}
   \end{mathpar}
   \caption{\label{fig:opsemSF1} Call-by-value small step semantic of systemF with
     evaluation context. $\hstep$ is the head reduction relation. $\step$ is

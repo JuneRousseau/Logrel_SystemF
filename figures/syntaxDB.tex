@@ -2,36 +2,34 @@
 
   $k \in \NN$
 
-  $e ::= k\ |\ \lambda.\ e\ |\ \ldots$
+  $e ::= k\ |\ \lam{}{e}\ |\ \ldots$
 
-  $v ::= k\ |\ \lambda.\ e\ |\ \ldots$
+  $v ::= k\ |\ \lam{}{e}\ |\ \ldots$
 
   $\alpha \in \NN$
 
-  $\tau ::= \alpha\ |\ \forall.\ \tau |\ \ldots$
+  $\ty ::= \alpha\ |\ \tyforall{}{\ty}\ |\ \ldots$
 
-  $\Gamma ::= \bullet\ |\ \tau,\Gamma$
+  $\exprctx ::= \empctx\ |\ \ty,\exprctx$
 
   \centering
   \begin{mathpar}
     \inferH
     {E-App-DeBruijn}
     {  }
-    { (\lambda.\ e)\ v \hstep e.[v/]}
+    { \app{(\lam{}{e})}{v} \hstep \subst{e}{v}{}}
     \and
-  \end{mathpar}
 
-  \begin{mathpar}
     \inferH
     {T-TAbs-DeBruijn}
-    {\typed{(\mathrm{map}\ (+1)\ \Gamma)}{e}{\tau}}
-    {\typed{\Gamma}{\Lambda e}{\forall.\ \tau}}
+    {\typed{(\mathrm{map}~(+1)~\exprctx)}{e}{\ty}}
+    {\typed{\exprctx}{\tlam{e}}{\tyforall{}{\ty}}}
     \and
 
     \inferH
     {T-TApp-DeBruijn}
-    {\typed{\Gamma}{\Lambda e}{\forall.\  \tau}}
-    {\typed{\Gamma}{e\ \_}{\tau.[\tau'/]}}
+    {\typed{\exprctx}{e}{\tyforall{}{\ty}}}
+    {\typed{\exprctx}{\tapp{e}}{\subst{\ty}{\ty'}{}}}
     \and
   \end{mathpar}
 

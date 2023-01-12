@@ -1,6 +1,7 @@
 #+title: Formalizing SystemF type safety with logical relation in Coq
 #+AUTHOR: June Rousseau
 #+OPTIONS: toc:nil
+#+LATEX_COMPILER: lualatex
 #+LATEX_HEADER: \usepackage{pftools}
 #+LATEX_HEADER: \usepackage{circledsteps}
 #+LATEX_HEADER: \newcommand{\link}[1]{\href{#1}{\cstep}}
@@ -14,6 +15,8 @@
 #+LATEX_HEADER: \newcommand{\hstep}{\rightsquigarrow}
 #+LATEX_HEADER: \newcommand{\step}{\rightarrow}
 #+LATEX_HEADER: \newcommand{\mstep}{\step^{\ast}}
+#+LATEX_HEADER: \usepackage{syntaxColor}
+#+LATEX_HEADER: \input{macros}
 \begin{abstract}
 Milner wrote "Well-typed does not go wrong". Type safety is a language property
 that ensure that if a program is well-typed, it is safe to execute, ie. it will
@@ -89,19 +92,18 @@ we will explain why the named representation is not the best for the
 implementation.
 
 The semantic is a small-step semantic with a call-by-value strategy.
-The notation $e.[v/x]$ is the capture-avoiding substitution of the expression
+The notation $\subst{e}{v}{x}$ is the capture-avoiding substitution of the expression
 variable $x$ by the value $v$. The syntax and the semantic are standard.
 We note $\hstep$ the transitive closure of the non-head reduction relation.
 
 \input{figures/typingSF1}
 Figure \ref{fig:typingSF1} shows the types and the typing rules of SystemF.
-We note $\typed{\Delta;\ \Gamma}{e}{\tau}$ the typing judgment saying that "$e$ is of type
-$\tau$ under the typing context $\Delta;\ \Gamma$".
-$\Gamma$ is the context of expression variables, that associate to each expression
-variable its type. $\Delta$ is the context of type variable, that gathers the free
-type variables. $\bullet$ is the empty context.
-Because the typing rules are standard, we will not extend the explanation too
-much.
+We note $\typed{\tyctx;\ \exprctx}{e}{\ty}$ the typing judgment saying that
+"$e$ is of type $\ty$ under the typing context $\tyctx;\ \exprctx$".
+$\exprctx$ is the context of expression variables, that associate to each
+expression variable its type. $\tyctx$ is the context of type variable, that
+gathers the free type variables. $\empctx$ is the empty context. Because the
+typing rules are standard, we will not extend the explanation too much.
 
 With the language defined, we can focus on a property of this language, the type
 safety.
@@ -112,28 +114,28 @@ A term is safe if, for any step it can perform (according to the operational
 semantic), it does not get stuck. In other words, any expression it can reduced to
 is either a value, or an expression that can do another step.
 \[
-\mathrm{Safe}(e) \eqdef
-\forall e',\ e \mstep e' \Rightarrow (e' \in \mathrm{Val}) \vee \exists e'', e' \hstep e''
+\safe(e) \eqdef
+\forall e'.~e \mstep e' \Rightarrow (e' \in \val) \vee \exists e''.~e' \hstep e''
 \]
 We can also parameterize the safety predicate by a predicate $P$ on the values, such
 that the reduced expression is either a value that respect the predicate
 $P$, or it can do an additional step.
 Formally, the parameterized safety predicate:
 \[
-\mathrm{Safe_{P}}(e) \eqdef
-\forall e',\ e \mstep e' \Rightarrow (e' \in \mathrm{Val} \wedge P(v)) \vee \exists e'', e' \step e''
+\safe_{P}(e) \eqdef
+\forall e'.~e \mstep e' \Rightarrow (e' \in \val \wedge P(v)) \vee \exists e''.~e' \step e''
 \]
 
 The *type safety* of a language says that, as soon as a closed term is
 well-typed, the term is safe.
-\[\forall e,\ \tau.\ \typed{\bullet}{e}{\tau} \Rightarrow \mathrm{Safe}(e) \]
+\[\forall e,~\ty.~\typed{\empctx}{e}{\ty} \Rightarrow \safe(e) \]
 
 *** Logical relation
 As explained in Section 1, we can prove type safety of SystemF using progress
 and preservation, but in our case, we use logical relation.
-We note the logical relation $\lr{\xi}{\tau}{v}$. $\xi$ is a mapping from type variable
-to an expression property $P \in (\mathrm{expr} \rightarrow \PP)$
-\[\xi ::= \bullet\ |\ (\alpha \mapsto P) :: \xi\]
+We note the logical relation $\lr{\sctx}{\ty}{v}$. $\sctx$ is a mapping from
+type variable to an expression property $P \in (\mathrm{expr} \rightarrow \PP)$
+\[\sctx ::= \empctx\ |\ (\alpha \mapsto P) :: \sctx\]
 
 We define the logical relation by induction on the structure of type in Figure \ref{fig:logrelSF}.
 \input{figures/logicalrelationSF}
@@ -141,9 +143,9 @@ We define the logical relation by induction on the structure of type in Figure \
 The proof method based on logical relation decompose the type safety theorem in
 two lemmas:
 1. a term that is well-typed is in the logical relation
-\[\forall e,\ \tau.\ \typed{\bullet}{e}{\tau} \Rightarrow \lr{\bullet}{e}{\tau} \]
+\[\forall e,\ \ty.\ \typed{\empctx}{e}{\ty} \Rightarrow \lr{\empctx}{e}{\ty} \]
 2. a term in the logical relation is safe
-\[\forall e,\ \tau.\ \lr{\bullet}{e}{\tau} \Rightarrow \mathrm{Safe}(e) \]
+\[\forall e,\ \ty.\ \lr{\empctx}{e}{\ty} \Rightarrow \safe(e) \]
 
 The second lemma is almost trivial, because the safety is basically baked in the
 logical relation itself.
@@ -153,22 +155,23 @@ The generalized version is the so called *Fundamental Theorem of Logical
 Relation* (FTLR).
 
 To define the FTLR, we first need to introduce the semantic substitution.
-We note $\gamma$ a substitution, which maps expression variables to
+We note $\sfun$ a substitution, which maps expression variables to
 expressions.
-\[\gamma ::= \bullet\ |\ (x \mapsto e) :: \gamma\]
+\[\sfun ::= \empctx\ |\ (x \mapsto e) :: \sfun\]
 
-We say that the substitution $\gamma$ satisfies the typing context $\Gamma$ for the
-predicate $P \in \mathrm{type} \rightarrow \mathrm{expr} \rightarrow \PP$, written $\gamma \Mapsto_{P} \Gamma$,
-if for all variables\footnote{We assume that the domain of $\gamma$ and $\Gamma$ are equals.}
-in $\gamma$, the predicate $P$ holds for the mapped expression and
-their corresponding type in $\Gamma$.
+We say that the substitution $\sfun$ satisfies the typing context $\exprctx$ for
+the predicate $P \in \mathrm{type} \rightarrow \mathrm{expr} \rightarrow \PP$, written $\sfun
+\Mapsto_{P} \exprctx$, if for all
+variables\footnote{We assume that the domain of $\sfun$ and $\exprctx$ are equals.}
+in $\sfun$, the predicate $P$ holds for the mapped expression and their
+corresponding type in $\exprctx$.
 
 The *FTLR* states that if a closed term is well-typed, then for all substitution
-$\gamma$ that satisfies the typing context $\Gamma$ for the logical relation, then the
-term under the substitution $\gamma$ is in the logical relation.
-\[\forall e,\ \tau,\ \Delta,\ \Gamma.\ \typed{\Delta;\Gamma}{e}{\tau} \Rightarrow
-(\forall \xi,\ \gamma.\ (\gamma \Mapsto_{P} \Gamma) \Rightarrow \lr{\xi}{\tau}{\gamma(e)}) \]
-with $P = \lambda \tau,\ e.\ \lr{\xi}{\tau}{e}$.
+$\sfun$ that satisfies the typing context $\exprctx$ for the logical relation, then the
+term under the substitution $\sfun$ is in the logical relation.
+\[\forall e,\ \ty,\ \tyctx,\ \exprctx.\ \typed{\tyctx;\exprctx}{e}{\ty} \Rightarrow
+(\forall \sctx,\ \sfun.\ (\sfun \Mapsto_{P} \exprctx) \Rightarrow \lr{\sctx}{\ty}{\sfun(e)}) \]
+with $P = \lambda \ty,~e.~ \lr{\sctx}{\ty}{e}$.
 
 We highlight some important intermediate lemmas, and we let the reader refer to
 the Coq implementation or (Amin's lecture notes) for more details on the proof.
@@ -176,44 +179,45 @@ the Coq implementation or (Amin's lecture notes) for more details on the proof.
 **** Safe mono
 For any value predicates P and Q, and any expression e, the Safe predicate is
 monotone over the parameterized predicate
-\[ (\forall v.\ P(v) \Rightarrow Q(v)) \Rightarrow \mathrm{Safe}_{P}(e) \Rightarrow \mathrm{Safe}_{Q}(e) \]
+\[ (\forall v.\ P(v) \Rightarrow Q(v)) \Rightarrow \safe_{P}(e) \Rightarrow \safe_{Q}(e) \]
 **** Safe val
 For any value predicates P that holds for a value v, the Safe predicate also
 holds.
-\[ P(v) \Rightarrow \mathrm{Safe}_{P}(v) \]
+\[ P(v) \Rightarrow \safe_{P}(v) \]
 **** Safe step
 For any expression e that steps to an expression e', the Safe predicate backward
 propagate for any value predicate P.
-\[ e \step e' \Rightarrow \mathrm{Safe}_{P}(e') \Rightarrow \mathrm{Safe}_{P}(e)\]
+\[ e \step e' \Rightarrow \safe_{P}(e') \Rightarrow \safe_{P}(e)\]
 **** Safe bind
 To prove that an expression $E[e]$ is Safe, it actually suffices to show that
 $E[v]$ is safe for any value v.
-\[\forall P\ Q\ e,\ \mathrm{Safe}_{Q}(e) \Rightarrow
-(\forall v,\ Q(v) \Rightarrow \mathrm{Safe}_{P}(E[v])) \Rightarrow
-\mathrm{Safe}_{P}(E[e])) \]
+\[\forall P\ Q\ e,\ \safe_{Q}(e) \Rightarrow
+(\forall v,\ Q(v) \Rightarrow \safe_{P}(\ctxh{v})) \Rightarrow
+\safe_{P}(\ctxh{e})) \]
 **** Logrel subst
 *TODO*
 
-\[ \lrv{\xi}{\tau.[\tau'/\alpha]} \Leftrightarrow \lrv{(\alpha \mapsto \lrp{\xi}{\tau'})::\xi}{\tau} \]
+\[ \lrv{\sctx}{\ty.[\ty'/\alpha]} \Leftrightarrow \lrv{(\alpha \mapsto \lrp{\sctx}{\ty'})::\sctx}{\ty} \]
 
 **** Logrel weaken
-If $\alpha$ is not free in $\tau$, we can associate any predicate $P$ to $\alpha$ in $\xi$
-\[ \lrv{\xi}{\tau} \Leftrightarrow \lrv{(\alpha \mapsto P)::\xi}{\tau} \]
+If $\alpha$ is not free in $\ty$, we can associate any predicate $P$ to $\alpha$ in $\sctx$
+\[ \lrv{\sctx}{\ty} \Leftrightarrow \lrv{(\alpha \mapsto P)::\sctx}{\ty} \]
 
 *** Free theorems
 The FTLR has other consequences than just type safety. It can also be used to
 derive free theorems, /à la/ Wadler (cf. Theorem for free).
 We prove the two following theorems:
-- any polymorphic expression that is typed with the identity type $\forall \alpha, \alpha \rightarrow \alpha$
+- any polymorphic expression that is typed with the identity type
+  $\tyforall{\alpha}{\tyarrow{\alpha}{\alpha}}$
   is indeed the identity function, \ie if we apply the expression to a value
   $v$, it will reduce the value $v$ itself\footnote{If it terminates}.
-  \[\forall e\ v,\ \typed{\bullet;\bullet}{\forall \alpha.\ \alpha \rightarrow \alpha}{e}
-  \Rightarrow \mathrm{Safe}_{(\lambda e.\ e = v)}((e\ \_)\ v)
+  \[\forall e~,v.~\typed{\empctx;\empctx}{e}{\tyforall{\alpha}{\tyarrow{\alpha}{\alpha}}}
+  \Rightarrow \safe_{(\lambda e.~e = v)}(\app{(\tapp{e})}{v})
   \]
-- any polymorphic expression that is typed with the type $\forall \alpha, \alpha$ is actually
+- any polymorphic expression that is typed with the type $\tyforall{\alpha}{\alpha}$ is actually
   the empty type, which is indeed uninhabited.
-  \[\forall e\ v,\ \typed{\bullet;\bullet}{\forall \_.\ 0 }{e}
-  \Rightarrow \mathrm{Safe}_{(\lambda e.\ \bot )}(e\ \_)
+  \[\forall e~,v.~\typed{\empctx;\empctx}{e}{\tyforall{\alpha}{\alpha}}
+  \Rightarrow \safe_{(\lambda e.~\bot )}(\tapp{e})
   \]
 
 * Implementation in Coq
@@ -239,9 +243,9 @@ The two semantics are equivalent (cf. proof), and both implementations have
 their own pros and cons.
 The main characteristic that will be help to do the choice is the
 the /safe-bind/ lemma :
-\[\forall P\ Q\ e,\ \mathrm{Safe}_{Q}(e) \Rightarrow
-(\forall v,\ Q\ v \Rightarrow \mathrm{Safe}_{P}(E[v])) \Rightarrow
-\mathrm{Safe}_{P}(E[e])) \]
+\[\forall P\ Q\ e,\ \safe_{Q}(e) \Rightarrow
+(\forall v,\ Q\ v \Rightarrow \safe_{P}(\ctxh{v})) \Rightarrow
+\safe_{P}(\ctxh{v})) \]
 
 On the one hand, the structural induction is easier when the semantic describes
 every single rules (1), but we have to prove an equivalent version of the
@@ -280,16 +284,17 @@ to its binder. More precisely, the DeBruijn index k points to the k-th enclosing
 
 In a more formal way, an expression can be a variable $k \in \NN$. A variable k is
 free when it ranges outside of the enclosing \lambda.
-The notation $e.[v/]$ is the substitution of the /first/ free variable: it
+The notation $\subst{e}{v}{}$ is the substitution of the /first/ free variable: it
 replaces the free variable 0, and rename all the other variable consequently.
-For instance, in the expression $(0,1).[\unitt/] = (\unitt, 0)$, the first free
-variable is 0, thus it replaces 0 by the expression $\unitt$. Moreover, the next
-free variable 1 is then renamed to 0. In the expression $1.[\unitt/] = 0$, the first
-free variable should be 0 (even if it does not appears in the expression), thus
-the substitution only perform the renaming.
+For instance, in the expression $\subst{\pair{0}{1}}{\tt}{} = \pair{\tt}{0}$,
+the first free variable is 0, thus it replaces 0 by the expression $\tt$.
+Moreover, the next free variable 1 is then renamed to 0. In the expression
+$\subst{1}{\tt}{} = 0$, the first free variable should be 0 (even if it does not
+appears in the expression), thus the substitution only perform the renaming.
 Finally, when there is lambda abstraction like in the expression,
-$(\lambda \_. (0,(1,2))).[\unitt/] = (\lambda \_. (0,(\unitt,1)))$, the substitution replace the
-first free variable under the lambda abstraction and the renaming as well.
+$\subst{(\lam{}{\pair{0}{\pair{1}{2}}})}{\tt}{} =
+(\lam{}{\pair{0}{\pair{\tt}{1}}})$, the substitution replaces the first free
+variable under the lambda abstraction and the renaming as well.
 *TODO should i write the formal definition of substitution ?*.
 In a similar way than the variable of the language, the type variable $\alpha \in \NN$
 use the DeBruijn representation.
@@ -298,19 +303,19 @@ use the DeBruijn representation.
 Figure \ref{fig:opsemDB} shows the modifications on the syntax. As type variable
 are also represented using the De Bruijn indices, the free variable are the $\alpha$
 that range outside the $\forall$. Thus, there is no need to maintain the type variable
-context $\Delta$. Moreover, the expression variable context becomes a sequence of
-type, such that the k-th element of the sequence $\Gamma$ is the type of the
+context $\tyctx$. Moreover, the expression variable context becomes a sequence of
+type, such that the k-th element of the sequence $\exprctx$ is the type of the
 free expression variable represented by $k$.
 
-The main modification is in the rule \ref{T-TAbs-DeBruijn}
-Indeed, in the rule \ref{T-Abs} with named binders, the binder of the type
+The main modification is in the rule \ruleref{T-TAbs-DeBruijn}
+Indeed, in the rule \ruleref{T-Abs} with named binders, the binder of the type
 variable $\alpha$ is added in the context, and makes sure that $\alpha$ does not appear
-freely in the context $\Gamma$. If necessary, $\alpha$ can be renamed to a fresh type
+freely in the context $\exprctx$. If necessary, $\alpha$ can be renamed to a fresh type
 variable.
 Using De Bruijn representation, the new binder is represented by the type
-variable 0. All the type variables in the context $\Gamma$ have to be renamed: it
+variable 0. All the type variables in the context $\exprctx$ have to be renamed: it
 both ensures that the type points to the right binder and the freshness of the
-new binder. The renaming consists on the incrementation of the (free?) variable
+new binder. The renaming consists on incrementating of the (free?) variable
 by 1, because they are now under one $\forall$.
 
 The De Bruijn technique has been widely used to represent binders. /autosubst/
@@ -326,9 +331,9 @@ the weakening lemma.
 \input{figures/logrelDB}
 Figure \ref{fig:logrelDB} highlights the modifications of the logical relation
 according to the De Bruijn representation of the binders. In particular, we
-notice that the mapping $\xi$ is a sequence of expression properties instead of a
+notice that the mapping $\sctx$ is a sequence of expression properties instead of a
 mapping of type variables. Indeed, as we have already done with the context
-$\Gamma$, the k-th element of $\xi$ is the property mapped to the type variable $k$.
+$\Gamma$, the k-th element of $\sctx$ is the property mapped to the type variable $k$.
 
 *TODO* Example of lemma that was hard to prove with named binders, but easier
 with autosubst ?
@@ -338,64 +343,63 @@ One of the main property of the logical relation is the following /substitution
 lemma/.
 We recall the substitution lemma below, with the De Bruijn representation of the binders
 \[
-\forall \xi,\ \tau,\ \tau',\ v.\
-\lrv{\xi}{ \tau.[\tau'/]}
+\forall \sctx,\ \ty,\ \ty',\ v.\
+\lrv{\sctx}{\subst{\ty}{\ty'}{}}
 \Leftrightarrow
-\lrv{(\lrp{\xi}{\tau'}::\xi)}{\tau}
+\lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
 \]
 It states that a value $v$ is in the logical relation for the type
-$\tau.[\tau'/]$ if and only if we can associate its own logical relation to the
+$\ty.[\ty'/]$ if and only if we can associate its own logical relation to the
 corresponding free type variable in the interpretation mapping.
 However, while the string representation of the binder allows to
-proceed by straightforward induction on $\tau$ (?), we cannot proceed directly
+proceed by straightforward induction on $\ty$ (?), we cannot proceed directly
 by induction with our representation based on the DeBruijn indices. The
 induction hypothesis is actually not strong enough. Indeed, the polymorphic type
 case does not work.
 
 Let the induction hypothesis be
 \[
-\forall \xi,\ \tau,\ \tau',\ v.\
-\lrv{\xi}{ \tau.[\tau'/]}
+\forall \sctx,\ \ty,\ \ty',\ v.\
+\lrv{\sctx}{\subst{\ty}{\ty'}{}}
 \Leftrightarrow
-\lrv{(\lrp{\xi}{\tau'}::\xi)}{\tau}
+\lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
 \]
 The proof obligation for the polymorphic case is
 \[
-\lrv{\xi}{(\forall \_.\ \tau).[\tau'/]}
+\lrv{\sctx}{\subst{(\tyforall{}{\ty})}{\ty'}{}}
 \Leftrightarrow
-\lrv{(\lrp{\xi}{\tau'}::\xi)}{(\forall \_.\ \tau)}
+\lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\tyforall{}{\ty})}
 \]
 If we unfold the definition of the logical relation,
 the proof obligation roughly ends up to look like
 \[
-\lrv{P::\xi}{\tau.[\tau'/]}
+\lrv{P::\sctx}{\subst{\ty}{\ty'}{}}
 \Leftrightarrow
-\lrv{P::(\lrp{\xi}{\tau'}::\xi)}{\tau}
+\lrv{P::(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
 \]
-where an additional predicate $P$ is the head of the mapping $\xi$.
+where an additional predicate $P$ is the head of the mapping $\sctx$.
 While we would like to use the IH, it is not possible because the head of the
-mapping has to be the property of the substituted type variable $\tau'$.
+mapping has to be the property of the substituted type variable $\ty'$.
 
 The solution is then to generalized the substitution lemma, such that the
-predicate that maps the substituted type variable $\tau'$ to the logical relation
+predicate that maps the substituted type variable $\ty'$ to the logical relation
 may be anywhere in the new mapping. From a higher level, it means that had
 already gone through a certain number of type abstraction.
 
+
 \[
-\forall \xi_{1},\ \xi_{2},\ \tau',\ v.\
-\lrv{ \xi_{1}++\xi_{2}}{ \tau.[\mathrm{upn}\ (\mathrm{len }\ \xi_{1}) \tau'/]}
+\forall \sctx_{1},\ \sctx_{2},\ \ty',\ v.\
+\lrv{ \sctx_{1}++\sctx_{2}}{\subst{\ty}{\mathrm{upn}\ (\mathrm{len }\ \sctx_{1})\ \ty'}{}}
 \Leftrightarrow
-\lrv{ \xi_{1}++( \lrp{\xi_{2}}{\tau'} ::\xi_{2})}{\tau}
+\lrv{ \sctx_{1}++( \lrp{\sctx_{2}}{\ty'} ::\sctx_{2})}{\ty}
 \]
-where $\tau.[\mathrm{upn}\ (\mathrm{len }\ \xi_{1}) \tau'/]$
-substitutes $\tau'$ in the type $\tau$ by renaming the variables after $(\mathrm{len }\ \xi_{1})$.
-It suffices to instantiate the generalized theorem with $\xi_{1} = \bullet$
+where $\subst{\ty}{\mathrm{upn}\ (\mathrm{len }\ \sctx_{1})\ \ty'}{}$
+substitutes $\ty'$ in the type $\ty$ by renaming the variables after
+$(\mathrm{len }\ \sctx_{1})$.
+It suffices to instantiate the generalized theorem with $\sctx_{1} = \empctx$
 to get the substitution lemma.
 
 With a similar argument, the weakening lemma also need a generalization to be proved.
-
-** N-steps :noexport:
-Why did I need to define a n-step reduction relation.
 
 * Possible improvement / Future work
 In this section, we discuss about different way in which the project could be
@@ -416,12 +420,12 @@ We propose to make the implementation more generic and modular, such that we can
 define the Safe predicate independently to the language. In a Coq
 implementation, this result in the definition of a class that express what is a
 valid language. A generic language is a tuple of:
-- the type of expression of the language $expr$
-- a function $is\_value: expr \rightarrow Prop$ that express which expressions are the
+- the type of expression of the language $\mr{Expr}$
+- a function $\mr{is\_value}: \mr{Expr} \rightarrow \PP$ that express which expressions are the
   values of the language
-- a function $head\_step: expr \rightarrow expr \rightarrow Prop$ that express the head reduction
-  relation
-- a function $is\_ectx: (expr \rightarrow expr) \rightarrow Prop$ that express how to
+- a function $\mr{head\_step}: \mr{\mr{Expr}} \rightarrow \mr{Expr} \rightarrow \PP$ that express
+  the head reduction relation
+- a function $\mr{is\_ectx}: (\mr{Expr} \rightarrow \mr{Expr}) \rightarrow \PP$ that express how to
   determine the evaluation context when the redex is not in head position
 
 The future work is to determine which properties (expressed in terms of the
@@ -443,9 +447,9 @@ prove language properties. The properties we focused on in this project is type
 safety. We propose two others properties to extend the project.
 *** Normalization
 A term normalizes if it reduces to a value. Formally,
-\[\mathrm{Norm}(e) \eqdef \exists v \in \mathrm{Val}.\ e \step^{*} v\]
+\[\norm(e) \eqdef \exists v \in \val.~e \step^{*} v\]
 and the parameterized version
-\[\mathrm{Norm}_{P}(e) \eqdef \exists v \in \mathrm{Val}.\ e \step^{*} v \wedge P(v)\]
+\[\norm_{P}(e) \eqdef \exists v \in \val.~e \step^{*} v \wedge P(v)\]
 
 We can derive the lemmas equivalent to Safe-val, Safe-mono, Safe-bind and
 Safe-step for the Norm predicate. This extension could leverage the modularity
@@ -459,27 +463,27 @@ theorems.
 
 Formally, the contextual equivalence is defined as follows:
 \[
-\typed{\Delta';\Gamma'}{e_{1} \approx^{\mathrm{ctx}} e_{2} }{\tau'}
+\typed{\tyctx';\exprctx'}{e_{1} \approx^{\mathrm{ctx}} e_{2} }{\ty'}
 \eqdef
- \forall E\ :\ (\Delta;\Gamma \vdash \tau) \Rightarrow (\bullet;\bullet \vdash \unit).\
- (E[e_{1}] \Downarrow v \Leftrightarrow E[e_{2}] \Downarrow v)
+ \forall \ctx\ :\ (\tyctx;\exprctx \vdash \ty) \Rightarrow (\empctx;\empctx \vdash \tyunit).\
+ (\ctxh{e_{1}} \Downarrow v \Leftrightarrow \ctxh{e_{2}} \Downarrow v)
 \]
 where $e \Downarrow v \eqdef e \mstep v$ and 
 \begin{mathpar}
 \inferH
 {Ctx-Typing}
-{\typed{\Delta;\Gamma}{e}{\tau}
+{\typed{\tyctx;\exprctx}{e}{\ty}
 \\
-\typed{\Delta';\Gamma'}{E[e]}{\tau'}
+\typed{\tyctx';\exprctx'}{\ctxh{e}}{\ty'}
 }
-{ E\ :\ (\Delta;\Gamma \vdash \tau) \Rightarrow (\Delta';\Gamma' \vdash \tau')}
+{ \ctx~:~(\tyctx;\exprctx \vdash \ty) \Rightarrow (\tyctx';\exprctx' \vdash \ty')}
 \end{mathpar}
 
-It states that two expressions $e_{1}$ and $e_{2}$ of type $\tau$ are contextually
+It states that two expressions $e_{1}$ and $e_{2}$ of type $\ty$ are contextually
 equivalent if and only if
-for any context that has a hole of type $\tau$, and produces a closed expression of
-type $\unit$ (see \ref{Ctx-Typing}), filling the hole with $e_{1}$ or $e_{2}$
-will both reduces to the same value $v$ (which actually has to be $\unitt$).
+for any context that has a hole of type $\ty$, and produces a closed expression of
+type $\tyunit$ (see \ruleref{Ctx-Typing}), filling the hole with $e_{1}$ or $e_{2}$
+will both reduces to the same value $v$ (which actually has to be $\tt$).
 
 
 ** Logical relation using Iris

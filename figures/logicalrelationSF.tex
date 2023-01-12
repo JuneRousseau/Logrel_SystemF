@@ -1,25 +1,25 @@
 \begin{figure}[ht]
     \begin{flalign*}
-      \lrv{\xi}{\alpha} \eqdef&\ \xi(\alpha)\\
+      \lrv{\sctx}{\alpha} \eqdef&\ \sctx(\alpha)\\
       %
-      \lrv{\xi}{\unit} \eqdef&\ v = \unitt \\
+      \lrv{\sctx}{\tyunit} \eqdef&\ v = \tt \\
       %
-      \lrv{\xi}{\tau_{1} \times \tau_{2}}
+      \lrv{\sctx}{\typair{\ty_{1}}{\ty_{2}}}
       \eqdef&\
-              \exists v_{1},\ v_{2}.\ v = (v_{1}, v_{2}) \wedge
-              \lr{\xi}{\tau_{1}}{v_{1}} \wedge
-              \lr{\xi}{\tau_{2}}{v_{2}} \\
+              \exists v_{1},~v_{2}.~v = \pair{v_{1}}{v_{2}} \wedge
+              \lr{\sctx}{\ty_{1}}{v_{1}} \wedge
+              \lr{\sctx}{\ty_{2}}{v_{2}} \\
       %
-      \lrv{\xi}{\tau_{1} \rightarrow \tau_{2}}
+      \lrv{\sctx}{\tyarrow{\ty_{1}}{\ty_{2}}}
       \eqdef&\
-              \exists e.\ v = \lambda x.\ e \wedge
-              ( \forall v'.\ \lr{\xi}{\tau_{1}}{v'} \Rightarrow
-              \mathrm{Safe}_{\lrp{\xi}{\tau_{2}}}(e.[v'/x]))\\
+              \exists e.~v = \lam{x}{e} \wedge
+              ( \forall v'.~\lr{\sctx}{\ty_{1}}{v'} \Rightarrow
+              \safe_{\lrp{\sctx}{\ty_{2}}}(\subst{e}{v'}{x}))\\
       %
-      \lrv{\xi}{\forall \alpha.\ \tau}
+      \lrv{\sctx}{\tyforall{\alpha}{\ty}}
       \eqdef&\
-              \exists e.\ v = \Lambda e \wedge
-              ( \forall P.\ \mathrm{Safe}_{\lrp{((\alpha \mapsto P)::\xi)}{\tau}}(e))
+              \exists e.~v = \tlam{e} \wedge
+              ( \forall P.~\safe_{\lrp{((\alpha \mapsto P)::\sctx)}{\ty}}(e))
   \end{flalign*}
   \caption{\label{fig:logrelSF} Logical relation }
 \end{figure}
