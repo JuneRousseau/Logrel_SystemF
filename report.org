@@ -485,7 +485,6 @@ for any context that has a hole of type $\ty$, and produces a closed expression 
 type $\tyunit$ (see \ruleref{Ctx-Typing}), filling the hole with $e_{1}$ or $e_{2}$
 will both reduces to the same value $v$ (which actually has to be $\tt$).
 
-
 ** Logical relation using Iris
 Iris is a higher-order separation logic framework, implemented and verified in
 Coq. Iris as been shown to be an efficient framework to implement logical
@@ -506,17 +505,22 @@ However, Iris is a step-indexed logic. It provides the logical tools to easily
 manage the recursive types. Moreover, because Iris is a logic of resources, it
 allows to define the resources of heap and easily implement the pointers.
 
+** Logical relation as an interpretation of types :noexport:
+Another way to understand the logical relation is to see the logical relation as
+an interpretation of types. Indeed, the logical relation for the type $\ty$
+can be actually seen as the set of expression that behaves as the type $\ty$.
+In his notes about logical relation, Jon Sterling points out that some work can
+be performed in order to make transform the logical relation as an
+interpretation of terms, which is compositionnal.
+We think that it could be another way to improve the project: explore this option.
+\input{figures/logrelComp}
+
 * Conclusion
-
-
-* Ideas :noexport:
-** SystemF type safety with logical relation
-    As we have seen in the lecture
-** Formalize directly Amin's lecture note from the lecture
-** Use strings to represent the binders as a first step
-But the simultaneous substitution was a pain to work with
-** Replace string binders with De Bruijn binders, using autosubst
-** Remaining work
-- Bunch of intermediate lemmas about substitution to prove
-- Main type safety theorem
-- Free theorems ?
+Logical relation are a proof techniques that have been widely studied in the
+past few years (decades?), and that have shown to be very useful to prove
+programming language properties. While doing proof on paper is... and is prompt
+to do mistake, proof assistant such as Coq tend to give some higher guarantee.
+Indeed, Coq carefully manages every single details and ensures that every single
+lemma are proved. On the other hand, it requires to carefully choose the
+representation and to make some implementation choices in order to ease the
+proofs.
