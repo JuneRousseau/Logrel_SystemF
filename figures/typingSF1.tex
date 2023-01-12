@@ -1,7 +1,7 @@
 \begin{figure}[ht]
   $\alpha \in \mathrm{string}$
 
-  $\ty ::= \unit\
+  $\ty ::= \tyunit\
   |\ \alpha\
   |\ \typair{\ty}{\ty}\
   |\ \tyarrow{\ty}{\ty}\
@@ -71,7 +71,7 @@
     \inferH
     {T-TApp}
     {\typed{\tyctx; \exprctx}{e}{\tyforall{\alpha}{\ty}}}
-    {\typed{\tyctx; \exprctx}{\tappc{e}}{\subst{\ty}{\ty'}{\alpha}}}
+    {\typed{\tyctx; \exprctx}{\tapp{e}}{\subst{\ty}{\ty'}{\alpha}}}
     \and
   \end{mathpar}
 

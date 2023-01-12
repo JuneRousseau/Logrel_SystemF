@@ -2,6 +2,7 @@
 #+AUTHOR: June Rousseau
 #+OPTIONS: toc:nil
 #+LATEX_COMPILER: lualatex
+#+LATEX_HEADER: \usepackage[usenames,dvipsnames]{xcolor}
 #+LATEX_HEADER: \usepackage{pftools}
 #+LATEX_HEADER: \usepackage{circledsteps}
 #+LATEX_HEADER: \newcommand{\link}[1]{\href{#1}{\cstep}}
@@ -68,7 +69,7 @@ improvement and alternatives of the implementation of the logical relation in
 Coq, as well as possible extensions of the project.
 
 The Coq implementation is available online:
-https://github.com/BastienRousseau/Logrel_SystemF.
+[[https://github.com/BastienRousseau/Logrel_SystemF/tree/release]].
 We use circled numbers to link directly to corresponding Coq formal statements
 in the following.
 
