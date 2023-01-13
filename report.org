@@ -19,7 +19,6 @@
 #+LATEX_HEADER: \newcommand{\mstep}{\step^{\ast}}
 #+LATEX_HEADER: \usepackage{syntaxColor}
 #+LATEX_HEADER: \input{macros}
-
 #+LATEX_HEADER: \usepackage{amsthm}
 #+LATEX_HEADER: \theoremstyle{plain}
 #+LATEX_HEADER: \newtheorem*{theorem*}{Theorem}
@@ -27,24 +26,25 @@
 #+LATEX_HEADER: \newtheorem*{definition*}{Definition}
 #+bibliography: biblio.bib
 \begin{abstract}
-Milner wrote "Well-typed does not go wrong". Type safety is a language property
-that ensure that if a program is well-typed, it is safe to execute, ie. it will
-not be stuck.
-Logical relations are a proof method that have been efficient to prove
-language properties, such as type safety.
-During the lecture in class, we have defined and used a logical relation as a
-proof method in order to prove the type safety of SystemF.
-Everything on paper, and we assumed some intermediate lemmas. Some data
-structures and encoding remained implicit. If one wants to have full trust on a
-proof, we want to explicit every minutes details and prove every lemma used.
-Proof-assistant as Coq helps to track each of them and make sure that every
-proof goal is proved.
-The project consists on implementing the logical relation in Coq and prove the
-type safety of SystemF using the logical relation.
+Type safety is a language property that ensure that if a program is well-typed,
+this program is safe to execute. While syntactic approaches have been widely
+used to prove type safety, another proof method based on logical relation has
+been shown to be efficient to prove such language properties.
+During the lecture, we have defined, on paper, a logical relation
+and used it to prove type safety of SystemF. Because there is many details
+paper proof are prone to errors. Moreover, the encoding of some
+data structures, as well as their properties, are often implicits.
+Proof-assistant as Coq requires to explicit everything in the implementation,
+prove every single properties, and helps to keep track of every minute details.
+To fill the gap between paper proof and a proof-assistant implementation, we
+propose an implementation in Coq of type safety of SystemF, using logical
+relation.
 \end{abstract}
 #+TOC: headlines 2
 
 * Introduction
+Milner wrote /"Well-typed programs cannot go wrong"/
+[cite:@milnerTheoryTypePolymorphism1978].
 Type safety --- also known as /type soundness/ --- is a language property
 ensuring that well-typed terms will never reach a stuck state. A naive approach
 to prove type safety of a language is to proceed by induction on the structure
