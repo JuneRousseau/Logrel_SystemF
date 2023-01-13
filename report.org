@@ -43,7 +43,11 @@ relation.
 \end{abstract}
 #+TOC: headlines 2
 
+\todo{On the document, we use "term" and "expression" interchangeably}
 * Introduction
+:PROPERTIES:
+:CUSTOM_ID: introduction
+:END:
 Milner wrote /"Well-typed programs cannot go wrong"/
 [cite:@milnerTheoryTypePolymorphism1978].
 Type safety --- also known as /type soundness/ --- is a language property
@@ -93,56 +97,54 @@ corresponding Coq code\footnote{Some representation details might differ.}.
 :PROPERTIES:
 :CUSTOM_ID: paper-proof
 :END:
-In this section, we formalize on paper the language SystemF as it has been
-implemented in Coq. We present the call-by-value (CBV) small-step semantic and
-the typing judgment. Then, we formalize the type safety, the logical relation
-and we establish the main theorems.
-Most of the formalization is classic, mainly inspired by the lecture
-notes [cite:@timanyLogicalRelationsSafety].
+In this section, we formalize on paper the language SystemF using a named
+representation of the binders. We present the call-by-value (CBV) small-step
+semantic and the typing judgment. Then, we formalize the type safety, the
+logical relation and we formulate the main lemmas and theorem.
+Most of the formalization is standard [cite:@timanyLogicalRelationsSafety].
 
 ** Language
 \input{figures/syntaxSF1}
-The language we consider is a variant of SystemF, that includes
-the unit type and the product type with the projection.
-In figure \ref{fig:opsemSF1}, we define the syntax and the operational semantic
-of the language we use in this project. The reader may notice that the
-expression variable are named binders represented as strings. In section 3, we
-will see another representation of the binder, based on De Bruijn technique, and
-we will explain why the named representation is not the best for the
-implementation.
+We consider a variant of the language SystemF, that includes the unit and the
+product type.
+We define the syntax and the operational semantic of the language
+in figure \ref{fig:opsemSF1}.
+The named binders are represented as strings. The variable $y$ in the expression
+$\pair{\tt}{y}$ is a free variable (not bind to any lambda abstraction), while
+the variable $x$ in the expression $\lam{x}{x}$ is bind to the lambda
+abstraction. In section [[#implementation]], we will see a different representation
+of the binder, based on De Bruijn technique, and we will explain why the named
+representation is not the best for the implementation.
 
 The semantic is a small-step semantic with a call-by-value strategy.
 The notation $\subst{e}{v}{x}$ is the capture-avoiding substitution of the expression
-variable $x$ by the value $v$. The syntax and the semantic are standard.
-We note $\hstep$ the transitive closure of the non-head reduction relation.
+variable $x$ by the value $v$. We note $\mstep$ the transitive closure of the
+non-head reduction relation $\step$. The syntax and the semantic are standard.
 
 \input{figures/typingSF1}
 Figure \ref{fig:typingSF1} shows the types and the typing rules of SystemF.
 We note $\typed{\tyctx;\ \exprctx}{e}{\ty}$ the typing judgment saying that
-"$e$ is of type $\ty$ under the typing context $\tyctx;\ \exprctx$".
-$\exprctx$ is the context of expression variables, that associate to each
-expression variable its type. $\tyctx$ is the context of type variable, that
-gathers the free type variables. $\empctx$ is the empty context. Because the
-typing rules are standard, we will not extend the explanation too much.
+/"$e$ is of type $\ty$ under the typing context $\tyctx;\ \exprctx$"/.
+$\exprctx$ is the context of expression variables, that associates a type to an
+expression variable.
+$\tyctx$ is the context of type variable, that gathers the free type variables.
+We note $\empctx$ an empty context. The typing rules are also standard.
 
 With the language defined, we can focus on a property of this language, the type
 safety.
 
-** Type safety and logical relation
-*** Type safety
-A term is safe if, for any step it can perform (according to the operational
-semantic), it does not get stuck. In other words, any expression it can reduced to
-is either a value, or an expression that can do another step.
+** Type safety
+A term is safe if it never get stuck after any number of step. In other words,
+any reduced expression is either a value, or can perform another step.
 \begin{definition*}{Safety}
 \[
 \safe(e) \eqdef
 \forall e'.~e \mstep e' \Rightarrow (e' \in \val) \vee \exists e''.~e' \hstep e''
 \]
 \end{definition*}
-We can also parameterize the safety predicate by a predicate $P$ on the values, such
-that the reduced expression is either a value that respect the predicate
-$P$, or it can do an additional step.
-Formally, the parameterized safety predicate:
+A weaker version of the safety is the parameterized safety. Let $P$ a predicate
+of values. A term is safe according to $P$ if any reduced expression can either
+perform a step, or is a value that \todo{respects} the predicate $P$.
 \begin{definition*}{Parameterized safety
 \href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L37}{\cstep}
 }
@@ -151,38 +153,39 @@ Formally, the parameterized safety predicate:
 \forall e'.~e \mstep e' \Rightarrow (e' \in \val \wedge P(v)) \vee \exists e''.~e' \step e''
 \]
 \end{definition*}
-
-The *type safety* of a language says that, as soon as a closed term is
-well-typed, the term is safe.
+A language is type safe as soon as any closed well-typed term is safe.
 \begin{theorem*}{Type safety
 \href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L526}{\cstep}
 }
 \(\forall e,~\ty.~\typed{\empctx}{e}{\ty} \Rightarrow \safe(e)\)
 \end{theorem*}
 
-*** Logical relation
-As explained in Section 1, we can prove type safety of SystemF using progress
-and preservation, but in our case, we use logical relation.
-We note the logical relation $\lr{\sctx}{\ty}{v}$. $\sctx$ is a mapping from
-type variable to an expression property $P \in (\mathrm{expr} \rightarrow \PP)$
-\[\sctx ::= \empctx\ |\ (\alpha \mapsto P) :: \sctx\]
+** Logical relation
+As pointed out in Section [[#introduction]], type safety of SystemF can be proved
+using the syntactic approach of progress and preservation
+[cite:@wrightSyntacticApproachType1994], but can also be proved using logical
+relation.
+We note the logical relation[fn::We can also say /"$v$ is in the logical
+relation for the type $\ty$"/]
+$\lr{\sctx}{\ty}{v}$, where \(\sctx ::= \empctx\ |\ (\alpha \mapsto P) :: \sctx\) is
+a mapping from type variable to an expression property
+$P \in (\mathrm{Expr} \rightarrow \PP)$.
 
 We define the logical relation by induction on the structure of type in Figure \ref{fig:logrelSF}.
 \input{figures/logicalrelationSF}
 
-The proof method based on logical relation decompose the type safety theorem in
-two lemmas:
-1. a term that is well-typed is in the logical relation
-\[\forall e,\ \ty.\ \typed{\empctx}{e}{\ty} \Rightarrow \lr{\empctx}{e}{\ty} \]
-2. a term in the logical relation is safe
-\[\forall e,\ \ty.\ \lr{\empctx}{e}{\ty} \Rightarrow \safe(e) \]
+With the logical relation, the type safety theorem is the composition of two
+lemmas:
+1. any closed well-typed term is in the logical relation
+   \[\forall e,\ \ty.\ \typed{\empctx}{e}{\ty} \Rightarrow \lr{\empctx}{e}{\ty} \]
+2. any term in the logical relation is safe
+   \[\forall e,\ \ty.\ \lr{\empctx}{e}{\ty} \Rightarrow \safe(e) \]
 
-The second lemma is almost trivial, because the safety is basically baked in the
-logical relation itself.
-The first lemma is however the interesting part of the proof. In order to prove
-it, we first need to generalized the lemma.
-The generalized version is the so called *Fundamental Theorem of Logical
-Relation* (FTLR).
+The second lemma is very straightforward, because the safety is basically baked
+in the logical relation itself.
+The first lemma is the interesting part of the proof. In order to prove it, we
+first need to generalized the lemma. The generalized version is the *Fundamental
+Theorem of Logical Relation* (FTLR).
 
 To define the FTLR, we first need to introduce the semantic substitution.
 We note $\sfun$ a substitution, which maps expression variables to
@@ -190,15 +193,22 @@ expressions.
 \[\sfun ::= \empctx\ |\ (x \mapsto e) :: \sfun\]
 
 We say that the substitution $\sfun$ satisfies the typing context $\exprctx$ for
-the predicate $P \in \mathrm{type} \rightarrow \mathrm{expr} \rightarrow \PP$, written $\sfun
-\Mapsto_{P} \exprctx$, if for all
-variables\footnote{We assume that the domain of $\sfun$ and $\exprctx$ are equals.}
+the predicate $P \in \mathrm{Type} \rightarrow \mathrm{Expr} \rightarrow \PP$, written
+$\sfun \Mapsto_{P} \exprctx$, if for all
+variables[fn::We assume that the domain of $\sfun$ and $\exprctx$ are equals.]
 in $\sfun$, the predicate $P$ holds for the mapped expression and their
 corresponding type in $\exprctx$.
+\begin{definition*}{Typing context satisfaction
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L132}{\cstep}
+}
+\[
+\sfun \Mapsto_{P} \exprctx \eqdef \forall x \in \mr{Dom}(\sfun).~P(\sfun(x))(\exprctx(x))
+\]
+\end{definition*}
 
-The *FTLR* states that if a closed term is well-typed, then for all substitution
+The FTLR states that if a closed term is well-typed, then for all substitution
 $\sfun$ that satisfies the typing context $\exprctx$ for the logical relation, then the
-term under the substitution $\sfun$ is in the logical relation.
+term substituted with $\sfun$ is in the logical relation.
 \begin{theorem*}{Fundamental Theorem of Logical Relation
 \href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L394}{\cstep}
 }
@@ -207,8 +217,9 @@ term under the substitution $\sfun$ is in the logical relation.
 with $P = \lambda \ty,~e.~ \lr{\sctx}{\ty}{e}$.
 \end{theorem*}
 
-We highlight some important intermediate lemmas, and we let the reader refer to
-the Coq implementation or (Amin's lecture notes) for more details on the proof.
+In the end of the section, we highlight some important intermediate lemmas.
+We let the reader refer to the Coq proof, or the lecture notes
+[cite:@timanyLogicalRelationsSafety] for the paper proof.
 
 For any value predicates $P$ and $Q$, and any expression $e$, the $\safe$
 predicate is monotone over the parameterized predicate.
@@ -227,7 +238,7 @@ holds.
 \end{lemma*}
 
 For any expression $e$ that steps to an expression $e'$, the $\safe$ predicate
-backward propagates for any value predicate $P$.
+is (backward)-preserved for any value predicate $P$.
 \begin{lemma*}{Safe step backward
 \href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L58}{\cstep}
 }
@@ -260,9 +271,9 @@ If $\alpha$ is not free in $\ty$, we can associate any predicate $P$ to $\alpha$
 \( \lrv{\sctx}{\ty} \Leftrightarrow \lrv{(\alpha \mapsto P)::\sctx}{\ty} \)
 \end{lemma*}
 
-*** Free theorems
-The FTLR has other consequences than just type safety. It can also be used to
-derive free theorems, /à la/ Wadler [cite:@wadlerTheoremsFree1989].
+** Free theorems
+The FTLR has other consequences, besides type safety. For instanc, it can also
+be used to derive free theorems, /à la/ Wadler [cite:@wadlerTheoremsFree1989].
 We prove the two following theorems.
 
 Any polymorphic expression that is typed with the identity type
