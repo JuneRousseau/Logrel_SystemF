@@ -24,6 +24,7 @@
 #+LATEX_HEADER: \newtheorem*{theorem*}{Theorem}
 #+LATEX_HEADER: \newtheorem*{lemma*}{Lemma}
 #+LATEX_HEADER: \newtheorem*{definition*}{Definition}
+#+LATEX_HEADER: \usepackage{todonotes}
 #+bibliography: biblio.bib
 \begin{abstract}
 Type safety is a language property that ensure that if a program is well-typed,
@@ -46,43 +47,52 @@ relation.
 Milner wrote /"Well-typed programs cannot go wrong"/
 [cite:@milnerTheoryTypePolymorphism1978].
 Type safety --- also known as /type soundness/ --- is a language property
-ensuring that well-typed terms will never reach a stuck state. A naive approach
-to prove type safety of a language is to proceed by induction on the structure
-of type. However, this approach fails, because the induction hypothesis is too
-weak.
-In the literature, type safety is commonly proved using two auxiliary lemmas
-known as /progress/ and /preservation/
-[cite:@pierceTypesProgrammingLanguages2002].
-The former says that if an expression is well-typed, it is either a value, or it
-can perform a step. The later says that if an expression is well-typed, the next
-step will also be well-typed.
-Another way to prove type safety of SystemF is based on logical relation techniques.
-Logical relation is a proof method that scales better on more expressive
-language (*TODO CHECK?*) and that can be used to prove others language
-properties, such as normalization, contextual equivalence or non-interference.
-Moreover, the fundamental theorem of logical relation has useful consequences
-besides type safety.
+ensuring that well-typed program are safe. More precisely, it means that any
+well-typed closed term of the language will never reach a state in which the
+semantic says nothing.
+A naive approach to prove type safety of a language would be is to proceed by
+induction on the structure of type. However, this approach fails because the
+induction hypothesis is too weak.
+Type safety is commonly proved using two auxiliary lemmas known as /progress/
+and /preservation/
+[cite:@wrightSyntacticApproachType1994; @pierceTypesProgrammingLanguages2002].
+Informally, the former states that a well-typed expression is not stuck, \ie it
+is either a value, or can perform a step. The later says that if an expression
+is well-typed, the next step will also be well-typed.
+Another way to prove type safety is based on logical relation. Logical relation
+is a proof method that scales better on more expressive language
+\todo{check this information}
+and that can be used to prove others language properties, such
+as normalization, contextual equivalence or non-interference. Moreover, the
+fundamental theorem of logical relation has consequences besides type safety.
 
-Defining logical relation on paper requires to keep track of plenty of minute
-details. It is easy to miss an important detail, or to badly assume a lemma on
-the relation. In order to get more confidence in our proof, one can use computer
-proof-assistant, such as Coq, to help keeping track of all these details.
+When defining a logical relation, there is plenty of detail to keep track, which
+makes the paper proof prone to miss an important detail. Moreover, the concrete
+data structure are sometimes quite implicit. Proof assistant, such as Coq, make
+sure that every single properties has been proved. The interactive theorem
+prover helps one to keep track of every minute detail. Thus, implementing
+logical relation to prove type safety in Coq \todo{find the verb} more
+confidence. \todo{However, it requires to make the right implementation choice}
 
-This report is organized as follows:
-In section 2, we formalize the language SystemF (semantic and typing judgment),
-the type safety property, the logical relation and we establish the main
-theorem. In section 3, we present the different implementation options, and we
-highlight the challenges of the implementation in Coq, contrasting with the
-paper version of the proof. Finally in section 4, we present
-improvement and alternatives of the implementation of the logical relation in
-Coq, as well as possible extensions of the project.
+This report is organized as follows.
+In section [[#paper-proof]], we formalize on paper the language SystemF, the type
+safety property, the logical relation and we establish the main theorems and
+lemmas.
+In section [[#implementation]], we present the different implementation options, and
+we highlight the challenges of the implementation in Coq, contrasting with the
+paper version of the proof.
+Finally in section [[#improvement]], we propose ideas of improvement and
+alternatives of the implementation, as well as possible extensions of the
+project.
 
-The Coq implementation is available online:
-[[https://github.com/BastienRousseau/Logrel_SystemF/tree/release]].
-We use circled numbers to link directly to corresponding Coq formal statements
-in the following.
+The Coq implementation is available in a [[https://github.com/BastienRousseau/Logrel_SystemF/tree/release][Github repository online]].
+If the following, we use numbered circles to link the formal statement to the
+corresponding Coq code\footnote{Some representation details might differ.}.
 
 * Type safety of SystemF on paper
+:PROPERTIES:
+:CUSTOM_ID: paper-proof
+:END:
 In this section, we formalize on paper the language SystemF as it has been
 implemented in Coq. We present the call-by-value (CBV) small-step semantic and
 the typing judgment. Then, we formalize the type safety, the logical relation
@@ -276,6 +286,9 @@ the empty type, which is indeed uninhabited.
 \end{theorem*}
 
 * Implementation in Coq
+:PROPERTIES:
+:CUSTOM_ID: implementation
+:END:
 In this section, we describe the different implementations options that we had
 and we explain the choices that we made.
 
@@ -465,6 +478,9 @@ to get the substitution lemma.
 With a similar argument, the weakening lemma also need a generalization to be proved.
 
 * Possible improvement / Future work
+:PROPERTIES:
+:CUSTOM_ID: improvement
+:END:
 In this section, we discuss about different way in which the project could be
 improved. Firstly, we propose an amelioration to make the implementation more
 general (?) and modular. Then, we propose some extension of the project.
