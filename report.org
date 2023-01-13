@@ -134,6 +134,9 @@ With the language defined, we can focus on a property of this language, the type
 safety.
 
 ** Type safety
+:PROPERTIES:
+:CUSTOM_ID: type-safety
+:END:
 A term is safe if it never get stuck after any number of step. In other words,
 any reduced expression is either a value, or can perform another step.
 \begin{definition*}{Safety}
@@ -225,7 +228,7 @@ For any value predicates $P$ and $Q$, and any expression $e$, the $\safe$
 predicate is monotone over the parameterized predicate.
 \begin{lemma*}{Safe monotonicity
 \href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L41}{\cstep}
-}
+}\label{thm:safemono}
 \( (\forall v.\ P(v) \Rightarrow Q(v)) \Rightarrow \safe_{P}(e) \Rightarrow \safe_{Q}(e) \)
 \end{lemma*}
 
@@ -233,7 +236,7 @@ For any value predicates $P$ that holds for a value $v$, the $\safe$ predicate a
 holds.
 \begin{lemma*}{Safe value
 \href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L51}{\cstep}
-}
+}\label{thm:safeval}
 \( P(v) \Rightarrow \safe_{P}(v) \)
 \end{lemma*}
 
@@ -241,7 +244,7 @@ For any expression $e$ that steps to an expression $e'$, the $\safe$ predicate
 is (backward)-preserved for any value predicate $P$.
 \begin{lemma*}{Safe step backward
 \href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L58}{\cstep}
-}
+}\label{thm:safestep}
 \( e \step e' \Rightarrow \safe_{P}(e') \Rightarrow \safe_{P}(e)\)
 \end{lemma*}
 
@@ -496,62 +499,64 @@ to get the substitution lemma.
 :END:
 In this section, we discuss about different way in which the project could be
 improved. Firstly, we propose an amelioration to make the implementation more
-general (?) and modular. Then, we propose some extension of the project.
+generic and modular. Then, we propose some direction in which we could extend
+the project.
 Finally, we propose an alternative way to implement a logical relation for type
 safety in Coq, which could lead to a convenient way to extend the language with
 non-trivial features.
 
-** Language independent lemmas
+** Language typeclass
 The main interest of the project was to implement type safety of SystemF in Coq,
-using logical relation. In Section 2.2, we defined the Safe (parameterized)
-predicate and few intermediate lemmas about this predicate. The attentive reader
-may have notice that the Safe predicate does not really depends on the language,
-on the contrary to the logical relation.
+using logical relation. In section [[#type-safety]], we defined the
+parameterized $\safe$ predicate and few intermediate lemmas about this
+predicate. We may notice that the $\safe$ predicate does not really depends on
+the language, on the contrary to the logical relation.
 
 We propose to make the implementation more generic and modular, such that we can
-define the Safe predicate independently to the language. In a Coq
-implementation, this result in the definition of a class that express what is a
+define the $\safe$ predicate independently to the language. In a Coq
+implementation, this result in the definition of a class that expresses what is a
 valid language. A generic language is a tuple of:
 - the type of expression of the language $\mr{Expr}$
-- a function $\mr{is\_value}: \mr{Expr} \rightarrow \PP$ that express which expressions are the
-  values of the language
-- a function $\mr{head\_step}: \mr{\mr{Expr}} \rightarrow \mr{Expr} \rightarrow \PP$ that express
+- a function $\mr{is\_value}: \mr{Expr} \rightarrow \PP$ that expresses which expressions
+  are the values of the language
+- a function $\mr{head\_step}: \mr{\mr{Expr}} \rightarrow \mr{Expr} \rightarrow \PP$ that expresses
   the head reduction relation
-- a function $\mr{is\_ectx}: (\mr{Expr} \rightarrow \mr{Expr}) \rightarrow \PP$ that express how to
+- a function $\mr{is\_ectx}: (\mr{Expr} \rightarrow \mr{Expr}) \rightarrow \PP$ that expresses how to
   determine the evaluation context when the redex is not in head position
 
 The future work is to determine which properties (expressed in terms of the
-generic) are necessary to make the language a /valid/ language.
+generic language) are necessary to make the language a /valid/ language.
 By valid language, we mean a language that allows one to derive the properties
-over the Safe predicate, \ie safe-mono, safe-val, safe-bind and safe-step.
+over the $\safe$ predicate, \ie \href{thm:safemono}{safe-mono},
+\href{thm:safeval}{safe-val}, \href{thm:safebind}{safe-bind} and
+\href{thm:safestep}{safe-step}.
 
 This improvement brings more modularity in the implementation. One can indeed
 define its own language, prove that the language is a valid language and the
-typeclass derives automatically the Safe predicates for free.
-Of course, our variant of SystemF would be an instance of such valid language.
+typeclass derives automatically the lemmas about the safety for free.
+Our variant of SystemF would be an instance of such valid language.
 But we could easily extend the project with type safety of another language,
-such as Simply Typed Lambda Calculus (STLC) without proving the properties of
-Safe again.
+such as Simply Typed Lambda Calculus (STLC) without proving the safety lemmas again.
 
 ** Other language properties
 As mentioned earlier, logical relation is a proof technique that can be used to
-prove language properties [cite:@skorstengaardIntroductionLogicalRelations]. The
-properties we focused on in this project is type safety. We propose two others
-properties to extend the project.
+prove language properties [cite:@skorstengaardIntroductionLogicalRelations]. We
+propose two others properties to extend the project.
 *** Normalization
 A term normalizes if it reduces to a value. Formally,
 \[\norm(e) \eqdef \exists v \in \val.~e \step^{*} v\]
 and the parameterized version
 \[\norm_{P}(e) \eqdef \exists v \in \val.~e \step^{*} v \wedge P(v)\]
 
-We can derive the lemmas equivalent to Safe-val, Safe-mono, Safe-bind and
-Safe-step for the Norm predicate. This extension could leverage the modularity
-of the previous proposition.
+We can derive the lemmas equivalent to \href{thm:safemono}{safe-mono},
+\href{thm:safeval}{safe-val}, \href{thm:safebind}{safe-bind} and
+\href{thm:safestep}{safe-step} for the $\norm$ predicate. This extension could
+leverage the modularity of the previous proposition.
 
 *** Contextual equivalence
 Contextual equivalence, or observational equivalence, is a language property
-saying that, if two program are contextually equivalent, there does not exist
-any context able to differentiate the them. It is also a way to derive free
+saying that, if two program are contextually equivalent, it does not exist
+any context able to differentiate them. It is also a way to derive free
 theorems.
 
 Formally, the contextual equivalence is defined as follows:
@@ -586,21 +591,22 @@ alternative way to implement the logical relation and prove type soundness of
 SystemF [cite:@timanyLogicalApproachType2022] could have been to use the Iris
 framework.
 
-An extension of SystemF is to add recursive types. However, literature
+A possible extension of SystemF is to add recursive types. However,
 [cite:@skorstengaardIntroductionLogicalRelations] has shown
 that adding recursive types is a feature that lead to a non-trivial extension of
 the logical relation: indeed, we have defined the logical relation inductively
 on the structure of type, but unfolding a recursive type does not guarantee the
 resulting type to be smaller than the folded one. Thus, it is impossible to
 simply extend the logical relation defined in this project.
-Similarly, another extension of the language is to add pointers
-[cite:@skorstengaardLogicalRelationsReferences2016], which leads to a similar
-issue (we can encode the recursion through the heap, thanks to the Landin's knot
-technique).
+Similarly, another extension of the language is to add mutable state (for
+instance, with pointers)
+[cite:@ahmedSemanticsTypesMutable2004; @skorstengaardLogicalRelationsReferences2016]
+which leads to a similar issue (we can encode the recursion through the heap,
+thanks to the Landin's knot technique).
 
 However, Iris is a step-indexed logic. It provides the logical tools to easily
 manage the recursive types. Moreover, because Iris is a logic of resources, it
-allows to define the resources of heap and easily implement the pointers.
+allows to define the resources of heap and easily implement the mutable state.
 
 ** Logical relation as an interpretation of types :noexport:
 Another way to understand the logical relation is to see the logical relation as
@@ -613,12 +619,11 @@ think that it could be another way to improve the project: explore this option. 
 
 * Conclusion
 Logical relation are a proof techniques that have been widely studied in the
-past few years (decades?), and that have shown to be very useful to prove
-programming language properties. While doing proof on paper is... and is prompt
-to do mistake, proof assistant such as Coq tend to give some higher guarantee.
-Indeed, Coq carefully manages every single details and ensures that every single
+past decades, and that have shown to be very useful to prove
+programming language properties. While doing proof on paper is prone to do
+mistake, proof assistants such as Coq tend to give some higher guarantee.
+Coq carefully manages every minute details and ensures that every single
 lemma are proved. On the other hand, it requires to carefully choose the
-representation and to make some implementation choices in order to ease the
-proofs.
+implementation representation in order to ease the proofs.
 
 \printbibliography[heading=none]
