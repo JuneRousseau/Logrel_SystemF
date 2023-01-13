@@ -120,22 +120,32 @@ safety.
 A term is safe if, for any step it can perform (according to the operational
 semantic), it does not get stuck. In other words, any expression it can reduced to
 is either a value, or an expression that can do another step.
+\begin{definition*}{Safety}
 \[
 \safe(e) \eqdef
 \forall e'.~e \mstep e' \Rightarrow (e' \in \val) \vee \exists e''.~e' \hstep e''
 \]
+\end{definition*}
 We can also parameterize the safety predicate by a predicate $P$ on the values, such
 that the reduced expression is either a value that respect the predicate
 $P$, or it can do an additional step.
 Formally, the parameterized safety predicate:
+\begin{definition*}{Parameterized safety
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L37}{\cstep}
+}
 \[
 \safe_{P}(e) \eqdef
 \forall e'.~e \mstep e' \Rightarrow (e' \in \val \wedge P(v)) \vee \exists e''.~e' \step e''
 \]
+\end{definition*}
 
 The *type safety* of a language says that, as soon as a closed term is
 well-typed, the term is safe.
-\[\forall e,~\ty.~\typed{\empctx}{e}{\ty} \Rightarrow \safe(e) \]
+\begin{theorem*}{Type safety
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L526}{\cstep}
+}
+\(\forall e,~\ty.~\typed{\empctx}{e}{\ty} \Rightarrow \safe(e)\)
+\end{theorem*}
 
 *** Logical relation
 As explained in Section 1, we can prove type safety of SystemF using progress
@@ -176,39 +186,66 @@ corresponding type in $\exprctx$.
 The *FTLR* states that if a closed term is well-typed, then for all substitution
 $\sfun$ that satisfies the typing context $\exprctx$ for the logical relation, then the
 term under the substitution $\sfun$ is in the logical relation.
+\begin{theorem*}{Fundamental Theorem of Logical Relation
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L394}{\cstep}
+}
 \[\forall e,\ \ty,\ \tyctx,\ \exprctx.\ \typed{\tyctx;\exprctx}{e}{\ty} \Rightarrow
 (\forall \sctx,\ \sfun.\ (\sfun \Mapsto_{P} \exprctx) \Rightarrow \lr{\sctx}{\ty}{\sfun(e)}) \]
 with $P = \lambda \ty,~e.~ \lr{\sctx}{\ty}{e}$.
+\end{theorem*}
 
 We highlight some important intermediate lemmas, and we let the reader refer to
 the Coq implementation or (Amin's lecture notes) for more details on the proof.
 
-**** Safe mono
-For any value predicates P and Q, and any expression e, the Safe predicate is
-monotone over the parameterized predicate
-\[ (\forall v.\ P(v) \Rightarrow Q(v)) \Rightarrow \safe_{P}(e) \Rightarrow \safe_{Q}(e) \]
-**** Safe val
-For any value predicates P that holds for a value v, the Safe predicate also
+For any value predicates $P$ and $Q$, and any expression $e$, the $\safe$
+predicate is monotone over the parameterized predicate.
+\begin{lemma*}{Safe monotonicity
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L41}{\cstep}
+}
+\( (\forall v.\ P(v) \Rightarrow Q(v)) \Rightarrow \safe_{P}(e) \Rightarrow \safe_{Q}(e) \)
+\end{lemma*}
+
+For any value predicates $P$ that holds for a value $v$, the $\safe$ predicate also
 holds.
-\[ P(v) \Rightarrow \safe_{P}(v) \]
-**** Safe step
-For any expression e that steps to an expression e', the Safe predicate backward
-propagate for any value predicate P.
-\[ e \step e' \Rightarrow \safe_{P}(e') \Rightarrow \safe_{P}(e)\]
-**** Safe bind
-To prove that an expression $E[e]$ is Safe, it actually suffices to show that
-$E[v]$ is safe for any value v.
+\begin{lemma*}{Safe value
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L51}{\cstep}
+}
+\( P(v) \Rightarrow \safe_{P}(v) \)
+\end{lemma*}
+
+For any expression $e$ that steps to an expression $e'$, the $\safe$ predicate
+backward propagates for any value predicate $P$.
+\begin{lemma*}{Safe step backward
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L58}{\cstep}
+}
+\( e \step e' \Rightarrow \safe_{P}(e') \Rightarrow \safe_{P}(e)\)
+\end{lemma*}
+
+To prove that an expression $E[e]$ is $\safe$, it actually suffices to show that
+$E[v]$ is safe for any value $v$.
+\begin{lemma*}{Safe bind
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L72}{\cstep}
+}
 \[\forall P\ Q\ e,\ \safe_{Q}(e) \Rightarrow
 (\forall v,\ Q(v) \Rightarrow \safe_{P}(\ctxh{v})) \Rightarrow
 \safe_{P}(\ctxh{e})) \]
-**** Logrel subst
-*TODO*
+\end{lemma*}
 
-\[ \lrv{\sctx}{\ty.[\ty'/\alpha]} \Leftrightarrow \lrv{(\alpha \mapsto \lrp{\sctx}{\ty'})::\sctx}{\ty} \]
+The logical relation of the substitution of the type $\ty'$ in a type $\ty$ is equivalent
+to associate the logical relation of $\ty'$ to the corresponding free variable
+in $\sctx$.
+\begin{lemma*}{Logrel subst
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L385}{\cstep}
+}
+\( \lrv{\sctx}{\ty.[\ty'/\alpha]} \Leftrightarrow \lrv{(\alpha \mapsto \lrp{\sctx}{\ty'})::\sctx}{\ty} \)
+\end{lemma*}
 
-**** Logrel weaken
-If $\alpha$ is not free in $\ty$, we can associate any predicate $P$ to $\alpha$ in $\sctx$
-\[ \lrv{\sctx}{\ty} \Leftrightarrow \lrv{(\alpha \mapsto P)::\sctx}{\ty} \]
+If $\alpha$ is not free in $\ty$, we can associate any predicate $P$ to $\alpha$ in $\sctx$.
+\begin{lemma*}{Logrel weaken
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L302}{\cstep}
+}
+\( \lrv{\sctx}{\ty} \Leftrightarrow \lrv{(\alpha \mapsto P)::\sctx}{\ty} \)
+\end{lemma*}
 
 *** Free theorems
 The FTLR has other consequences than just type safety. It can also be used to
@@ -234,7 +271,6 @@ Any polymorphic expression that is typed with the type $\tyforall{\alpha}{\alpha
 \Rightarrow \safe_{(\lambda e.~\bot )}(\tapp{e})
 \]
 \end{theorem*}
-
 
 * Implementation in Coq
 In this section, we describe the different implementations options that we had
@@ -358,12 +394,14 @@ with autosubst ?
 One of the main property of the logical relation is the following /substitution
 lemma/.
 We recall the substitution lemma below, with the De Bruijn representation of the binders
+\begin{lemma*}{Logrel subst - De Bruijn}
 \[
 \forall \sctx,\ \ty,\ \ty',\ v.\
 \lrv{\sctx}{\subst{\ty}{\ty'}{}}
 \Leftrightarrow
 \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
 \]
+\end{lemma*}
 It states that a value $v$ is in the logical relation for the type
 $\ty.[\ty'/]$ if and only if we can associate its own logical relation to the
 corresponding free type variable in the interpretation mapping.
@@ -401,8 +439,9 @@ The solution is then to generalized the substitution lemma, such that the
 predicate that maps the substituted type variable $\ty'$ to the logical relation
 may be anywhere in the new mapping. From a higher level, it means that had
 already gone through a certain number of type abstraction.
-
-
+\begin{lemma*}{Generalized logrel subst - De Bruijn
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L325}{\cstep}
+}
 \[
 \forall \sctx_{1},\ \sctx_{2},\ \ty',\ v.\
 \lrv{ \sctx_{1}++\sctx_{2}}{\subst{\ty}{\mathrm{upn}\ (\mathrm{len }\ \sctx_{1})\ \ty'}{}}
@@ -412,6 +451,7 @@ already gone through a certain number of type abstraction.
 where $\subst{\ty}{\mathrm{upn}\ (\mathrm{len }\ \sctx_{1})\ \ty'}{}$
 substitutes $\ty'$ in the type $\ty$ by renaming the variables after
 $(\mathrm{len }\ \sctx_{1})$.
+\end{lemma*}
 It suffices to instantiate the generalized theorem with $\sctx_{1} = \empctx$
 to get the substitution lemma.
 
