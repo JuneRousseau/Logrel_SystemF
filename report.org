@@ -341,52 +341,58 @@ the evaluation context semantic to define the logical relation. Moreover,
 we show in section [[#improvement]] another argument that scales in favour of the
 evaluation context semantic.
 
-** Binders (autosubst)
+** Nameless binders
 
-Our first attempt to represent the binding was to implement them using strings.
-The advantage of representing the binder using strings is that it makes the
-proof --- especially on paper --- more readable.
-However, this representation tends to induces some issues because the terms are
-equals "up-to renaming of bound variable", and the substitution has to be
-capture avoiding.
-Moreover, we need to define the parallel (or simultaneous) substitution at some
-point, and use this definition to do Coq proof, which is a pain to work with
-when defined using strings.
+In the expression $\lam{x}{e}$, we call $\lambda x$ a /binder/. When an expression
+variable is bounded, we says that it points to a specific binder.
+Named binders is a way to represent the binder, such that all the occurrences of
+$x$ in $\lam{x}{e}$ point to the binder $\lambda x$, until another binder with the
+same name appears. It is a convenient way to represent the binders, because the
+proofs, especially on paper, are more readable. However, this representation has
+also some downsides. Firstly, the same term might have different representation,
+because the terms are equals /up-to renaming of the bound variables/. For
+instance, $\lam{x}{x}$ represents the same term than $\lam{y}{y}$. Secondly,
+we have to make sure that the the substitution is capture-avoiding.
+Since the proof are more readable with named binders, we first tried to use them
+in the implementation. At some point, we had to define the parallel (or
+simultaneous) substitution, and using this definition in the Coq proof was a
+pain.
 
-Because the binder representation using string is not satisfactory when
-implementing the language in Coq, we had to explore other binding
-representations. The question of the implementation of binders is a well-known
-issue when implementing a language [cite:@pierceTypesProgrammingLanguages2002].
-A solution is the DeBruijn representation of the binders. It is a canonical,
-unique and nameless representation of the binder, in which a variable points
-directly to its binder: the named variables are replaced by a natural number
-that express the distance to its binder. More precisely, the DeBruijn index k
-points to the k-th enclosing \lambda.
+The named representation of the binders is not satisfactory when
+implementing the language in Coq. The question of the implementation of binders
+is a well-known issue when implementing a language
+[cite:@pierceTypesProgrammingLanguages2002]. An alternative solution is
+to use the DeBruijn representation. It is a canonical, unique and nameless
+representation of the binder. Informally, the variable point directly to their
+binder: the named variables are replaced by a natural number that expresses the
+distance to its binder. More precisely, the DeBruijn index /k/ points to the
+/k/-th enclosing \lambda.
 
-In a more formal way, an expression can be a variable $k \in \NN$. A variable k is
-free when it ranges outside of the enclosing \lambda.
+In a more formal way, an expression can be a variable $k \in \NN$. A variable $k$
+is free when it ranges outside of the enclosing \lambda.
 The notation $\subst{e}{v}{}$ is the substitution of the /first/ free variable: it
-replaces the free variable 0, and rename all the other variable consequently.
+replaces the free variable 0 (1 if it enters in a lambda-abstraction, etc), and
+renames all the other variable consequently.
 For instance, in the expression $\subst{\pair{0}{1}}{\tt}{} = \pair{\tt}{0}$,
 the first free variable is 0, thus it replaces 0 by the expression $\tt$.
 Moreover, the next free variable 1 is then renamed to 0. In the expression
 $\subst{1}{\tt}{} = 0$, the first free variable should be 0 (even if it does not
 appears in the expression), thus the substitution only perform the renaming.
-Finally, when there is lambda abstraction like in the expression,
+Finally, in the expression,
 $\subst{(\lam{}{\pair{0}{\pair{1}{2}}})}{\tt}{} =
-(\lam{}{\pair{0}{\pair{\tt}{1}}})$, the substitution replaces the first free
-variable under the lambda abstraction and the renaming as well.
-*TODO should i write the formal definition of substitution ?*.
-In a similar way than the variable of the language, the type variable $\alpha \in \NN$
-use the DeBruijn representation.
+(\lam{}{\pair{0}{\pair{\tt}{1}}})$, the substitution enters in the
+lambda-abstraction, where the first free variable is now represented as 1.
+\todo{should i write the formal definition of substitution ?}
+In a similar way, the type variable $\alpha \in \NN$ uses the DeBruijn representation.
 
 \input{figures/syntaxDB}
-Figure \ref{fig:opsemDB} shows the modifications on the syntax. As type variable
-are also represented using the De Bruijn indices, the free variable are the $\alpha$
-that range outside the $\forall$. Thus, there is no need to maintain the type variable
-context $\tyctx$. Moreover, the expression variable context becomes a sequence of
-type, such that the k-th element of the sequence $\exprctx$ is the type of the
-free expression variable represented by $k$.
+Figure \ref{fig:opsemDB} shows the modifications on the syntax due to the new
+representation. As type variable are also represented using the De Bruijn
+indices, the free variable are the $\alpha$ that range outside the number of
+enclosing $\forall$. Thus, there is no need to maintain the type variable context
+$\tyctx$. Moreover, the expression variable context becomes an ordered sequence
+of type, such that the /k/-th element of the sequence $\exprctx$ is the type of
+the free expression variable represented by $k$.
 
 The main modification is in the rule \ruleref{T-TAbs-DeBruijn}
 Indeed, in the rule \ruleref{T-Abs} with named binders, the binder of the type
@@ -396,28 +402,26 @@ variable.
 Using De Bruijn representation, the new binder is represented by the type
 variable 0. All the type variables in the context $\exprctx$ have to be renamed: it
 both ensures that the type points to the right binder and the freshness of the
-new binder. The renaming consists on incrementating of the (free?) variable
+new binder. The renaming consists on incrementating the \todo{free} type variable
 by 1, because they are now under one $\forall$.
 
 The De Bruijn technique has been widely used to represent binders. /autosubst/
 [cite:@SchaeferEtAl:2015:Autosubst:-Reasoning] is a Coq library that helps to
-implement and automatize the DeBruijn representation, and automatically derive
-and prove some basic lemma about the (parallel substitution). Moreover, it
-provides useful tactics to reason with the substitution operation.
-
-Our implementation uses /autosubst/ to represent the binders and leverage the
-automation to simplify the proofs, in particular for the substitution lemma and
-the weakening lemma.
+implement and automatize the DeBruijn representation. It automatically derives
+and proves some basic lemmas about the (parallel) substitution. Moreover, it
+provides useful tactics to reason with the substitution. Our implementation uses
+/autosubst/ to represent the binders and leverages the automation to simplify
+the proofs, in particular for the substitution lemma and the weakening lemma.
 
 \input{figures/logrelDB}
 Figure \ref{fig:logrelDB} highlights the modifications of the logical relation
 according to the De Bruijn representation of the binders. In particular, we
 notice that the mapping $\sctx$ is a sequence of expression properties instead of a
 mapping of type variables. Indeed, as we have already done with the context
-$\Gamma$, the k-th element of $\sctx$ is the property mapped to the type variable $k$.
+$\Gamma$, the \alpha-th element of $\sctx$ is the property mapped to the type variable
+$\alpha$.
 
-*TODO* Example of lemma that was hard to prove with named binders, but easier
-with autosubst ?
+\todo{Example of lemma that was hard to prove with named binders, but easier with autosubst}
 
 ** Substitution lemmas
 One of the main property of the logical relation is the following /substitution
