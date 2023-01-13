@@ -402,8 +402,8 @@ variable.
 Using De Bruijn representation, the new binder is represented by the type
 variable 0. All the type variables in the context $\exprctx$ have to be renamed: it
 both ensures that the type points to the right binder and the freshness of the
-new binder. The renaming consists on incrementating the \todo{free} type variable
-by 1, because they are now under one $\forall$.
+new binder. The renaming consists on incrementating the free type variable by 1,
+because they are now under one $\forall$.
 
 The De Bruijn technique has been widely used to represent binders. /autosubst/
 [cite:@SchaeferEtAl:2015:Autosubst:-Reasoning] is a Coq library that helps to
@@ -424,9 +424,8 @@ $\alpha$.
 \todo{Example of lemma that was hard to prove with named binders, but easier with autosubst}
 
 ** Substitution lemmas
-One of the main property of the logical relation is the following /substitution
-lemma/.
-We recall the substitution lemma below, with the De Bruijn representation of the binders
+One of the main property of the logical relation is the /substitution lemma/.
+We recall the substitution lemma below, but with the De Bruijn representation of the binders.
 \begin{lemma*}{Logrel subst - De Bruijn}
 \[
 \forall \sctx,\ \ty,\ \ty',\ v.\
@@ -439,11 +438,11 @@ It states that a value $v$ is in the logical relation for the type
 $\ty.[\ty'/]$ if and only if we can associate its own logical relation to the
 corresponding free type variable in the interpretation mapping.
 However, while the string representation of the binder allows to
-proceed by straightforward induction on $\ty$ (?), we cannot proceed directly
-by induction with our representation based on the DeBruijn indices. The
-induction hypothesis is actually not strong enough. Indeed, the polymorphic type
-case does not work.
+proceed by straightforward induction on $\ty$, we cannot proceed directly
+by induction with our representation based on the DeBruijn indices.
 
+The induction hypothesis is actually not strong enough, and the inductive case
+for the polymorphic type does not work.
 Let the induction hypothesis be
 \[
 \forall \sctx,\ \ty,\ \ty',\ v.\
@@ -465,13 +464,16 @@ the proof obligation roughly ends up to look like
 \lrv{P::(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
 \]
 where an additional predicate $P$ is the head of the mapping $\sctx$.
-While we would like to use the IH, it is not possible because the head of the
-mapping has to be the property of the substituted type variable $\ty'$.
+While we would like to use the induction hypothesis, it is not possible because
+the head of the mapping has to be the property of the substituted type variable
+$\ty'$.
 
 The solution is then to generalized the substitution lemma, such that the
 predicate that maps the substituted type variable $\ty'$ to the logical relation
-may be anywhere in the new mapping. From a higher level, it means that had
-already gone through a certain number of type abstraction.
+may be anywhere in the new mapping. From a high level, it means that
+the induction has already gone through a certain number of type abstraction
+$\tyforall{\ty}$.
+
 \begin{lemma*}{Generalized logrel subst - De Bruijn
 \href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L325}{\cstep}
 }
@@ -487,8 +489,6 @@ $(\mathrm{len }\ \sctx_{1})$.
 \end{lemma*}
 It suffices to instantiate the generalized theorem with $\sctx_{1} = \empctx$
 to get the substitution lemma.
-
-With a similar argument, the weakening lemma also need a generalization to be proved.
 
 * Possible improvement / Future work
 :PROPERTIES:
