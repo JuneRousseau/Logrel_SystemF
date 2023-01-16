@@ -1,6 +1,6 @@
 \begin{figure}[ht]
 
-  $x \in \mathrm{string}$
+  $x,y,\ldots \in \mathrm{string}$
 
   $e ::= x\
   |\ \tt\
@@ -31,13 +31,13 @@
     \inferH
     {E-Fst}
     {  }
-    {\fst{\pair{v_{1},v_{2}}} \hstep v_{1}}
+    {\fst{\pair{v_{1}}{v_{2}}} \hstep v_{1}}
     \and
 
     \inferH
     {E-Snd}
     {  }
-    {\snd{\pair{v_{1},v_{2}}} \hstep v_{2}}
+    {\snd{\pair{v_{1}}{v_{2}}} \hstep v_{2}}
     \and
 
     \inferH
@@ -57,7 +57,7 @@
     {e \hstep e'}
     {\ctxh{e} \step \ctxh{e'}}
   \end{mathpar}
-  \caption{\label{fig:opsemSF1} Call-by-value small step semantic of systemF with
+  \caption{\label{fig:opsemSF1} Call-by-value small-step semantic of systemF with
     evaluation context. $\hstep$ is the head reduction relation. $\step$ is
     the reduction relation.}
 \end{figure}

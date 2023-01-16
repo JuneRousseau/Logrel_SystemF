@@ -1,0 +1,27 @@
+\begin{figure}[ht]
+    \begin{flalign*}
+      \lrp{\sctx}{\alpha}
+      \eqdef&\ \myset{e \in \mr{Expr}}{e \mstep \sctx(\alpha)} \\
+      %
+      \lrp{\sctx}{\tyunit}
+      \eqdef&\ \myset{e \in \mr{Expr}}{e \mstep \tt} \\
+      %
+      \lrp{\sctx}{\typair{\ty_{1}}{\ty_{2}}}
+      \eqdef&\ \myset{e \in \mr{Expr}}
+              {\exists v_{1},~v_{2}.~
+              v_{1} \in \lrp{\sctx}{\ty_{1}} \wedge
+              v_{2} \in \lrp{\sctx}{\ty_{1}} \wedge
+              e \mstep \pair{v_{1}}{v_{2}}}\\
+      %
+      \lrp{\sctx}{\tyarrow{\ty_{1}}{\ty_{2}}}
+      \eqdef&\ \myset{e \in \mr{Expr}}
+              {\forall v \in \lrp{\sctx}{\ty_{1}}.
+              ~(\app{e}{v}) \in \lrp{\sctx}{\ty_{2}}}\\
+      %
+      \lrp{\sctx}{\tyforall{\alpha}{\ty}}
+      \eqdef&\ \myset{e \in \mr{Expr}}
+              {\forall P.
+              ~\tapp{e} \in \lrp{((\alpha \mapsto P)::\sctx)}{\ty}}
+  \end{flalign*}
+  \caption{\label{fig:logrelcomp} Logical relation as interpretation of type }
+\end{figure}
