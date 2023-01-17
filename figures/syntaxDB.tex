@@ -2,13 +2,29 @@
 
   $k \in \NN$
 
-  $e ::= k\ |\ \lam{}{e}\ |\ \ldots$
+  $e ::=
+  \pmb{k}\
+  |\ \tt\
+  |\ (e,e)\
+  |\ \pair{e}{e}\
+  |\ \fst{e}\
+  |\ \snd{e}\
+  |\ \pmb{\lam{}{e}}\
+  |\ \app{e}{e}\
+  |\ \tlam{e}\
+  |\ \tapp{e}\
+  $
 
-  $v ::= k\ |\ \lam{}{e}\ |\ \ldots$
+  $v ::= \pmb{k}\ |\ \tt\ |\ \pmb{\lam{}{e}}\ |\ \tlam{e}$
 
   $\alpha \in \NN$
 
-  $\ty ::= \alpha\ |\ \tyforall{}{\ty}\ |\ \ldots$
+  $\ty ::= \tyunit\
+  |\ \alpha\
+  |\ \typair{\ty}{\ty}\
+  |\ \tyarrow{\ty}{\ty}\
+  |\ \pmb{\tyforall{}{\ty}}\
+  $
 
   $\exprctx ::= \empctx\ |\ \ty,\exprctx$
 
@@ -33,5 +49,5 @@
     \and
   \end{mathpar}
 
-  \caption{\label{fig:opsemDB} Modifications of the syntax, the operational semantic and the typing rules due to the De Bruijn representation of the binders.}
+  \caption{\label{fig:opsemDB} Modifications of the syntax (\textbf{bold} symbol), the operational semantic and the typing rules for the De Bruijn representation of the binders.}
 \end{figure}
