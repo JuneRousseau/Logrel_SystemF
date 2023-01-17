@@ -14,3 +14,9 @@
 /theories/.lia.cache
 /figures/.auctex-auto/
 /.auctex-auto/
+*.log
+*.nav
+*.out
+/slides.pdf
+*.snm
+*.toc
