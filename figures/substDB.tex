@@ -1,0 +1,60 @@
+\begin{figure}[ht]
+  $\shift{\tt}{d}{c} \eqdef \tt$
+
+  $\shift{k}{d}{c} \eqdef k$, if $k < c$
+
+  $\shift{k}{d}{c} \eqdef k+d$, if $k \ge c$
+
+
+  $\shift{\pair{e_{1}}{e_{2}}}{d}{c} \eqdef
+  \pair{\shift{e_{1}}{d}{c}}{\shift{e_{2}}{d}{c}}$
+
+  $\shift{(\fst{e})}{d}{c} \eqdef \fst{\shift{e}{d}{c}}$
+
+  $\shift{(\snd{e})}{d}{c} \eqdef \snd{\shift{e}{d}{c}}$
+
+  $\shift{(\lam{}{e})}{d}{c} \eqdef
+  \lam{}{\shift{e}{d+1}{c}}$
+
+  $\shift{(\app{e_{1}}{e_{2}})}{d}{c} \eqdef
+  \app{\shift{e_{1}}{d}{c}}{\shift{e_{2}}{d}{c}}$
+
+  $\shift{(\tlam{e})}{d}{c} \eqdef \tlam{(\shift{e}{d}{c})}$
+
+  $\shift{(\tapp{e})}{d}{c} \eqdef \tapp{(\shift{e}{d}{c})}$
+
+  \caption{\label{fig:shiftDB} Definition of shifting of De Bruijn indices.}
+\end{figure}
+
+\begin{figure}[ht]
+  $\subst{\tt}{s}{n} \eqdef \tt$
+
+  $\subst{n}{s}{n} \eqdef s$
+
+  $\subst{k}{s}{n} \eqdef k$, if $k \neq n$
+
+  $\subst{\pair{e_{1}}{e_{2}}}{s}{n} \eqdef
+  \pair{\subst{e_{1}}{s}{n}}{\subst{e_{2}}{s}{n}}$
+
+  $\subst{(\fst{e})}{s}{n} \eqdef \fst{\subst{e}{s}{n}}$
+
+  $\subst{(\snd{e})}{s}{n} \eqdef \snd{\subst{e}{s}{n}}$
+
+  $\subst{(\lam{}{e})}{s}{n} \eqdef
+  \lam{}{\subst{e}{\shift{s}{1}{0}}{n+1}}$
+
+  $\subst{(\app{e_{1}}{e_{2}})}{s}{n} \eqdef
+  \app{\subst{e_{1}}{s}{n}}{\subst{e_{2}}{s}{n}}$
+
+  $\subst{(\tlam{e})}{s}{n} \eqdef \tlam{(\subst{e}{s}{n})}$
+
+  $\subst{(\tapp{e})}{s}{n} \eqdef \tapp{(\subst{e}{s}{n})}$
+
+
+  \caption{\label{fig:substDB} Definition of substitution of De Bruijn indices.}
+\end{figure}
+
+$\shift{e}{d}{c}$ is the shifting is of the variables above $c$ by $d$ in the
+term $e$.
+$\subst{e}{s}{n}$ is the substitution of expression variable $n$ by $s$ in the
+expression $e$. We note $\subst{e}{s}{} \eqdef \subst{e}{s}{0}$.

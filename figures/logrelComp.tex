@@ -1,7 +1,7 @@
 \begin{figure}[ht]
     \begin{flalign*}
       \lrp{\sctx}{\alpha}
-      \eqdef&\ \myset{e \in \mr{Expr}}{e \mstep \sctx(\alpha)} \\
+      \eqdef&\ \myset{e \in \mr{Expr}}{ \exists v.~e \mstep v \wedge \sctx(\alpha)(v)} \\
       %
       \lrp{\sctx}{\tyunit}
       \eqdef&\ \myset{e \in \mr{Expr}}{e \mstep \tt} \\

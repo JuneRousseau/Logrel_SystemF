@@ -5,7 +5,6 @@
   $e ::=
   \pmb{k}\
   |\ \tt\
-  |\ (e,e)\
   |\ \pair{e}{e}\
   |\ \fst{e}\
   |\ \snd{e}\
@@ -29,6 +28,7 @@
   $\exprctx ::= \empctx\ |\ \ty,\exprctx$
 
   \centering
+  $\fbox{\typed{\exprctx}{e}{\ty}}$
   \begin{mathpar}
     \inferH
     {E-App-DeBruijn}
