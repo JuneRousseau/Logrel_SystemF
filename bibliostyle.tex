@@ -1,0 +1,41 @@
+\AtEveryBibitem{%
+  \clearlist{language}
+  \clearlist{location}
+  \clearname{editor}
+  \clearfield{month}%
+  \clearfield{isbn}%
+  \clearfield{issn}%
+  \clearfield{pages}%
+  \clearfield{review}%
+  \clearfield{series}%%
+  \clearlist{address}
+  \clearfield{date}
+  \clearfield{eprint}
+  \clearfield{doi}
+
+  \ifentrytype{misc}{}{
+    \clearfield{url}%
+    \clearfield{urldate}%
+    \clearfield{urlday}%
+    \clearfield{urlmonth}%
+    \clearfield{urlyear}%
+  }
+
+  \ifentrytype{collection}{
+    \clearlist{publisher}
+    \clearfield{volume}
+    \clearfield{number}
+  }{}
+
+  \ifentrytype{incollection}{
+    \clearlist{publisher}
+    \clearfield{volume}
+    \clearfield{number}
+  }{}
+
+  \ifentrytype{inproceedings}{
+    \clearlist{publisher}
+    \clearfield{volume}
+    \clearfield{number}
+  }{}
+}

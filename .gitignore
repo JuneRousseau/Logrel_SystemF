@@ -20,3 +20,7 @@
 /slides.pdf
 *.snm
 *.toc
+*.bbl
+*.blg
+*.bcf
+/report.run.xml

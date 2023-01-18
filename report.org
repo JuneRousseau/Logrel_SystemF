@@ -4,6 +4,7 @@
 #+OPTIONS: toc:nil
 #+LATEX_COMPILER: lualatex
 #+LATEX_HEADER: \usepackage[usenames,dvipsnames]{xcolor}
+#+LATEX_HEADER: \usepackage{microtype}
 #+LATEX_HEADER: \usepackage{pftools}
 #+LATEX_HEADER: \usepackage{circledsteps}
 #+LATEX_HEADER: \newcommand{\link}[1]{\href{#1}{\cstep}}
@@ -25,20 +26,21 @@
 #+LATEX_HEADER: \newtheorem*{lemma*}{Lemma}
 #+LATEX_HEADER: \newtheorem*{definition*}{Definition}
 #+LATEX_HEADER: \usepackage{todonotes}
+#+bibliographystyle:alphabetic
 #+bibliography: biblio.bib
 \begin{abstract}
-Type safety is a language property that ensuret that any well-typed closed,
+Type safety is a language property that ensures that any well-typed, closed
 program is safe to execute. While syntactic approaches are widely used to
-prove type safety, another proof method based on logical relation has been shown
-to be efficient to prove such language properties. In the lectures, we have
-defined a logical relation and used it to prove type safety of \systemF, on
- paper. Because there are many details, paper proofs are prone to errors.
+prove type safety, another proof method based on logical relations has been
+shown to be efficient to prove such language properties. In the lectures, we
+have defined a logical relation and used it to prove type safety of \systemF,
+on paper. Because there are many details, paper proofs are prone to errors.
 Moreover, the encoding of some data structures, as well as their properties, are
 often implicit. Proof assistant such as Coq require  everything explicit in
 the implementation, prove every single property, and help to keep track of
 every minute detail. To fill the gap between paper proof and a proof-assistant
-implementation, we describe an implementation in Coq of type safety of \systemF,
-using logical relation.
+implementation, we describe an implementation in Coq of type safety of systemF,
+using a logical relation.
 \end{abstract}
 #+TOC: headlines 2
 
@@ -50,10 +52,11 @@ Milner described type safety by its famous quote
 /"Well-typed programs cannot go wrong"/
 [cite:@milnerTheoryTypePolymorphism1978].
 Type safety --- also known as /type soundness/ --- is a language property
-ensuring that well-typed program are safe. It expresses that the semantic is
-complete, in the sense that any well-typed, closed term[fn:term] of the language
-will never reach a state about which the semantics says nothing: it is either a
-value, or it can perform a step.
+ensuring that well-typed program are safe. In other words, well-typed closed
+term[fn:term] of the language will never reach a state about which the semantics
+says nothing: it is either a value, or it can perform a step. It expresses that
+the semantics is complete, in the sense that the machine always knows what to do
+at any step of the execution.
 
 A naive approach to prove type safety of a language would be to proceed by
 induction on the structure of types. However, this approach fails, because the
@@ -67,56 +70,56 @@ is well-typed, the next step will also be well-typed.
 
 Another way to prove type safety is based on logical relations. Logical
 relations are a proof method that scales better on more expressive language
-and that can be used to prove others language properties, such as normalization,
-contextual equivalence, or non-interference. Moreover, the fundamental theorem
-of logical relations has consequences besides type safety, as deriving free
-theorems.
+than syntactic approaches, and that can be used to prove others language
+properties, such as normalization, contextual equivalence, or non-interference.
+Moreover, the fundamental theorem of the logical relations has consequences
+besides type safety, as deriving free theorems.
 
 When defining a logical relation, there is plenty of detail to keep track of,
 which makes a paper proof prone to miss an important detail. Moreover, the
 concrete data structures are sometimes quite implicit. Proof assistants, such as
 Coq, make sure that every single properties has been proved. The interactive
-theorem prover helps one to keep track of every minute details. Thus, we get
-more confidence by implementing logical relation to prove type safety in Coq.
-However, the implementation itself brings new challenges, that we will discuss
-in this document.
+theorem prover helps one to keep track of every minute details. Therefore, we
+get more confidence by implementing logical relation to prove type safety in
+Coq. However, the implementation itself brings new challenges, that we will
+discuss in this document.
 
 This report is organized as follows.
-In section [[#paper-proof]], we formalize on paper the language \systemF, the type
+In Section [[#paper-proof]], we formalize on paper the language \systemF, the type
 safety property, the logical relation, and we establish the main theorems and
 lemmas.
-In section [[#implementation]], we present the different implementation options, and
+In Section [[#implementation]], we present the different implementation options, and
 we highlight the challenges of the implementation in Coq, contrasting with the
 paper version of the proof.
-Finally, in section [[#improvement]], we propose ideas of improvement and
+Finally, in Section [[#improvement]], we propose ideas of improvement and
 alternatives of the implementation, as well as possible extensions of the
 project.
 
-The Coq implementation is available in a [[https://github.com/BastienRousseau/Logrel_\systemF/tree/release][Github repository]].
+The Coq implementation is available in a [[https://github.com/BastienRousseau/Logrel_SystemF/tree/release][Github repository]].
 In the following, we use numbered circles to link the formal statement to the
 corresponding Coq code. For the purpose of the presentation, the representation
 in the paper and in the code might differ.
 [fn:term] In the document, we use "term" and "expression" interchangeably.
 
-* Type safety of \systemF on paper
+* Type safety of \systemF{} on paper
 :PROPERTIES:
 :CUSTOM_ID: paper-proof
 :END:
-In this section, we formalize on paper the language \systemF using a named
+In this section, we formalize on paper the language \systemF{} using a named
 representation of the binders. We present the call-by-value (CBV) small-step
 semantic and the typing judgment. Then, we formalize type safety, the logical
-relation and we formulate the main lemmas and theorem.
+relation and we formulate the main lemmas and theorems.
 Most of the formalization is standard [cite:@timanyLogicalRelationsSafety].
 
 ** Language
 \input{figures/syntaxSF1}
-We consider a variant of \systemF that includes unit and products.
-We define the syntax and the operational semantic of the language
+We consider a variant of \systemF{} that includes unit and products.
+We define the syntax and the operational semantics of the language
 in Figure \ref{fig:opsemSF1}.
 The named binders are represented as strings. The variable $y$ in the expression
 $\pair{\tt}{y}$ is a free variable (not bound to any lambda abstraction), while
 the variable $x$ in the expression $\lam{x}{x}$ is bound to the lambda
-abstraction. In section [[#implementation]], we show a different representation
+abstraction. In Section [[#implementation]], we show a different representation
 of binders, based on the De Bruijn technique, and we explain why the named
 representation is not well-suited for implementation.
 
@@ -134,8 +137,8 @@ expression variable.
 $\tyctx$ is the context of type variables, that gathers the free type variables.
 We denote $\empctx$ an empty context. The typing rules are also standard.
 
-With the language properly defined, we can now focus on a property of this
-language: type safety.
+With the language defined, we can now focus on a property of this language: type
+safety.
 
 ** Type safety
 :PROPERTIES:
@@ -154,7 +157,7 @@ A weaker version of safety is /parameterized safety/. Let $P$ be a predicate
 of values. A term is safe according to $P$ if any expression can either
 perform a step, or is a value that respects the predicate $P$:
 \begin{definition*}{Parameterized safety
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L37}{\cstep}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L37}{\cstep}
 }
 \[
 \safe_{P}(e) \eqdef
@@ -165,20 +168,21 @@ We notice that, for any $P$, $\safe_{P}(e) \Rightarrow \safe(e)$.
 
 A language is /type safe/ when any closed well-typed term is safe:
 \begin{theorem*}{Type safety
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L526}{\cstep}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L526}{\cstep}
 }
 \(\forall e,~\ty.~\typed{\empctx}{e}{\ty} \Rightarrow \safe(e)\)
 \end{theorem*}
 
 ** Logical relation
-As pointed out in Section [[#introduction]], type safety of \systemF can be proved
+As pointed out in Section [[#introduction]], type safety of \systemF{} can be proved
 using the syntactic approach of progress and preservation
 [cite:@wrightSyntacticApproachType1994], but can also be proved using a logical
 relation.
-We introduce the interpretation context $\sctx$, a mapping from type variable to
-an expression property $P \in (\mathrm{Expr} \rightarrow \PP)$.
+In order to define the logical relation, we need to introduce the interpretation
+context $\sctx$, a mapping from type variable to an expression property
+$P \in (\mathrm{Expr} \rightarrow \PP)$.
 \[\sctx ::= \empctx\ |\ (\alpha \mapsto P) :: \sctx\]
-We denote the logical relation $\lr{\sctx}{\ty}{v}$, read
+We denote the logical relation $\lr{\sctx}{\ty}{v}$, also read
 /"$v$ is in the logical relation for the type $\ty$, under the interpretation
 context $\sctx$"/.
 We define our logical relation by induction on the structure of types in Figure
@@ -189,9 +193,9 @@ We highlight the important part of the definition.
 A value is in the logical relation of the type variable $\alpha$, if it respects the
 property defined in the interpretation context $\sctx$. A value is in the
 logical relation of the arrow type $\tyarrow{\ty_{1}}{\ty_{2}}$ if applying the
-term to any value in the logical relation of $\ty_{1}$ leads to a safe value in
-the logical relation of $\ty_{2}$. A value is in the logical relation of the
-polymorphic type $\tyforall{\alpha}{\ty}$ if it is safe to interpret the type
+term to any value that is in the logical relation of $\ty_{1}$ leads to a safe
+value in the logical relation of $\ty_{2}$. A value is in the logical relation
+of the polymorphic type $\tyforall{\alpha}{\ty}$ if it is safe to interpret the type
 variable with any expression property $P$.
 
 The type safety theorem follows from the composition of two lemmas about the
@@ -201,7 +205,7 @@ logical relation:
 2. any term in the logical relation is safe
    \[\forall e,\ \ty.\ \lr{\empctx}{e}{\ty} \Rightarrow \safe(e) \]
 
-Following the /rules of thumb/ of
+Following the /rules of thumb/ in
 [cite:@skorstengaardIntroductionLogicalRelations], we baked the safety in the
 definition of the logical relation. This makes the second lemma straightforward
 to prove.
@@ -221,7 +225,7 @@ $\sfun \Mapsto_{P} \exprctx$, when for all expression variables in $\sfun$,
 the predicate $P$ holds for the mapped expression and their corresponding type
 in $\exprctx$:
 \begin{definition*}{Typing context satisfaction
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L132}{\cstep}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L132}{\cstep}
 }
 \[
 \sfun \Mapsto_{P} \exprctx \eqdef \forall x \in \mr{Dom}(\sfun).~P(\sfun(x))(\exprctx(x))
@@ -232,7 +236,7 @@ The FTLR states that if a closed term is well-typed, the term substituted with
 $\sfun$ is in the logical relation, for any $\sfun$ that satisfies the typing
 context $\exprctx$ for the logical relation:
 \begin{theorem*}{Fundamental Theorem of the Logical Relation
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L394}{\cstep}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L394}{\cstep}
 }
 \[\forall e,\ \ty,\ \tyctx,\ \exprctx.\ \typed{\tyctx;\exprctx}{e}{\ty} \Rightarrow
 (\forall \sctx,\ \sfun.\ (\sfun \Mapsto_{P} \exprctx) \Rightarrow \lr{\sctx}{\ty}{\sfun(e)}) \]
@@ -246,7 +250,7 @@ We refer the reader to the Coq proof, or the lecture notes
 For any value predicates $P$ and $Q$, and any expression $e$, the $\safe$
 predicate is monotone over the parameterized predicate:
 \begin{lemma*}{Safe monotonicity
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L41}{\cstep}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L41}{\cstep}
 }\label{thm:safemono}
 \( (\forall v.\ P(v) \Rightarrow Q(v)) \Rightarrow \safe_{P}(e) \Rightarrow \safe_{Q}(e) \)
 \end{lemma*}
@@ -254,7 +258,7 @@ predicate is monotone over the parameterized predicate:
 For any value predicates $P$ that holds for a value $v$, the $\safe$ predicate also
 holds:
 \begin{lemma*}{Safe value
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L51}{\cstep}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L51}{\cstep}
 }\label{thm:safeval}
 \( P(v) \Rightarrow \safe_{P}(v) \)
 \end{lemma*}
@@ -262,7 +266,7 @@ holds:
 For any expression $e$ that steps to an expression $e'$, the $\safe$ predicate
 is (backward)-preserved for any value predicate $P$:
 \begin{lemma*}{Safe step backward
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L58}{\cstep}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L58}{\cstep}
 }\label{thm:safestep}
 \( e \step e' \Rightarrow \safe_{P}(e') \Rightarrow \safe_{P}(e)\)
 \end{lemma*}
@@ -270,7 +274,7 @@ is (backward)-preserved for any value predicate $P$:
 To prove that an expression $\ctxh{e}$ is $\safe$, it actually suffices to show that
 $\ctxh{v}$ is safe for any value $v$:
 \begin{lemma*}{Safe bind
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L72}{\cstep}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L72}{\cstep}
 }\label{thm:safebind}
 \[\forall P\ Q\ e,\ \safe_{Q}(e) \Rightarrow
 (\forall v,\ Q(v) \Rightarrow \safe_{P}(\ctxh{v})) \Rightarrow
@@ -282,14 +286,14 @@ interpretation context $\sctx$ if and only if the value is in the logical
 relation of $\ty$ in which the interpretation of $\ty'$ in $\sctx$ is the
 logical relation itself:
 \begin{lemma*}{Logrel subst
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L385}{\cstep}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L385}{\cstep}
 }\label{thm:logrelsubst}
 \( \lrv{\sctx}{\subst{\ty}{\ty'}{\alpha}} \Leftrightarrow \lrv{(\alpha \mapsto \lrp{\sctx}{\ty'})::\sctx}{\ty} \)
 \end{lemma*}
 
 If $\alpha$ is not free in $\ty$, we can associate any predicate $P$ to $\alpha$ in $\sctx$:
 \begin{lemma*}{Logrel weaken
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L302}{\cstep}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L302}{\cstep}
 }\label{thm:logrelweak}
 \( \lrv{\sctx}{\ty} \Leftrightarrow \lrv{(\alpha \mapsto P)::\sctx}{\ty} \)
 \end{lemma*}
@@ -304,7 +308,7 @@ $\tyforall{\alpha}{\tyarrow{\alpha}{\alpha}}$ is the identity function, \ie if w
 the expression to a value $v$, it will reduce the value $v$
 itself, or run forever.
 \begin{theorem*}{Polymorphic identity
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/free_theorem.v#L8}{\cstep}}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/free_theorem.v#L8}{\cstep}}
 \[\forall e~,v.~\typed{\empctx;\empctx}{e}{\tyforall{\alpha}{\tyarrow{\alpha}{\alpha}}}
 \Rightarrow \safe_{(\lambda e.~e = v)}(\app{(\tapp{e})}{v})
 \]
@@ -313,7 +317,7 @@ itself, or run forever.
 Any polymorphic expression that is typed with the type $\tyforall{\alpha}{\alpha}$ is actually
 the empty type, which is as expected uninhabited:
 \begin{theorem*}{Empty type
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/free_theorem.v#L35}{\cstep}}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/free_theorem.v#L35}{\cstep}}
 \[\forall e~,v.~\typed{\empctx;\empctx}{e}{\tyforall{\alpha}{\alpha}}
 \Rightarrow \safe_{(\lambda e.~\bot )}(\tapp{e})
 \]
@@ -332,22 +336,22 @@ their properties are assumed, etc. But when implement, we need to concrete data
 structure and concrete lemmas about them etc.
 
 ** Semantic with evaluation context
-Our operational semantics of \systemF follows a call-by-value evaluation strategy,
+Our operational semantics of \systemF{} follows a call-by-value evaluation strategy,
 small-step semantic.
 We had in mind two possible solutions to implement the reduction relation of
-\systemF CBV.
-1. A semantic with an explicit reduction rule for every inductive case,
-    \href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/syntax_systemF.v}{\cstep}:
+\systemF{} CBV.
+1. A semantic with an explicit reduction rule for every inductive case
+    \href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/syntax_systemF.v}{\cstep},
     with a single reduction relation which contains all the rules.
-2. An evaluation context based semantic in two layers
-    \href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/opsem_systemF_ctx.v}{\cstep}:
+2. An evaluation context based semantics in two layers
+    \href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/opsem_systemF_ctx.v}{\cstep}:
    a head reduction relation, which expresses how to reduce the expression when
    the redex is in head position; and a non-head reduction relation, when the
    redex is not is the head position. The evaluation context determines where is
    the redex in the term.
 
 The two semantics are equivalent
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/opsem_systemF_ctx.v#L131}{\cstep},
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/opsem_systemF_ctx.v#L131}{\cstep},
 and both implementations have their own pros and cons.
 On the one hand, the structural induction is easier with the one-step semantic
 (1), but the lack of evaluation context prevents defining the
@@ -361,17 +365,17 @@ relations: in particular, the non-head reduction relation requires us to
 destruct the evaluation context.
 
 In the end, both approaches are equivalent in term of proof effort, and the
-choice is mainly a matter of taste. We wanted to stick to the lecture notes
-[cite:@timanyLogicalRelationsSafety] as much as possible, so we decided to use
+choice is mainly a matter of taste. We wanted to stick as much as possible to
+the lecture notes [cite:@timanyLogicalRelationsSafety], so we decided to use
 the evaluation context semantic to define the logical relation. Moreover,
-we show in section [[#improvement]] another argument that scales in favour of the
+we show in Section [[#improvement]] another argument that scales in favour of the
 evaluation context semantic.
 
 ** Nameless binders
 In the expression $\lam{x}{e}$, we call $\lambda x$ a /binder/. When an expression
 variable is bound, we say that it points to a (specific) binder. Named binders
 are a way to represent binders, such that all the occurrences of $x$ in
-$\lam{x}{e}$ point to the binder $\lambda x$, until another nesting binder with the
+$\lam{x}{e}$ point to the binder $\lambda x$, until another nested binder with the
 same name appears. It is a convenient way to represent the binders, because the
 proofs, especially on paper, are more readable. However, this representation has
 also some downsides. First, the same term might have different representation,
@@ -386,14 +390,14 @@ The named representation of the binders is not satisfactory when
 implementing the language in Coq. The question of the implementation of binders
 is a well-known issue when implementing a language
 [cite:@pierceTypesProgrammingLanguages2002]. An alternative solution is
-to use the DeBruijn representation. It is a canonical, unique and nameless
-representation of the binder. Informally, variables point directly to their
-binder: the named variables are replaced by a natural number that expresses the
-distance to its binder. More precisely, the DeBruijn index /k/ points to the
-/k/-th enclosing \lambda.
+to use a representation using De Bruijn indices. It is a canonical, unique and
+nameless representation of the binder. Informally, variables point directly to
+their binder: the named variables are replaced by a natural number that
+expresses the distance to its binder. More precisely, the DeBruijn index /k/
+points to the /k/-th enclosing \lambda.
 
-In a more formal way, the expression expression variables are $k \in \NN$. A
-variable $k$ is free when it ranges outside of the enclosing \lambda.
+In a more formal way, the expression variables are $k \in \NN$. A variable $k$ is
+free when it ranges outside of the enclosing \lambda.
 The notation $\subst{e}{v}{}$ is the substitution of the /first/ free variable: it
 replaces the free variable 0 --- or under $n$ lambda abstraction, it is
 represented by $n$ --- by $v$, and renames (here, renumbers) all the other
@@ -409,6 +413,8 @@ $\subst{(\lam{}{\pair{0}{\pair{1}{2}}})}{\tt}{} =
 lambda-abstraction, where the first free variable is now represented as 1.
 In a similar way, we also use the DeBruijn representation for type variables
 $\alpha \in \NN$.
+The formal definition of the substitution can be found in the Appendix
+[[#substitution-appendix]].
 
 \input{figures/syntaxDB}
 Figure \ref{fig:opsemDB} shows the modifications on the syntax due to the new
@@ -480,7 +486,7 @@ and therefore the proof obligation for the polymorphic case is
 \[
 \lrv{\sctx}{\subst{(\tyforall{}{\ty})}{\ty'}{}}
 \Leftrightarrow
-\lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\tyforall{}{\ty})}
+\lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\tyforall{}{\ty}}
 \]
 If we unfold the definition of the logical relation and simplify the goal,
 the proof obligation ends up being
@@ -501,7 +507,7 @@ the induction has already gone through a certain number of type abstractions
 $\tyforall{\ty_{1}} \tyforall{\ty_{2}} \ldots \tyforall{\ty_{n}}$.
 
 \begin{lemma*}{Generalized logrel subst - De Bruijn
-\href{https://github.com/BastienRousseau/Logrel_\systemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L325}{\cstep}
+\href{https://github.com/BastienRousseau/Logrel_SystemF/blob/599b9e84d6d8f902442e5f85f37522ce21708103/theories/logrel.v#L325}{\cstep}
 }
 \[
 \forall \sctx_{1},\ \sctx_{2},\ \ty',\ v.\
@@ -520,7 +526,7 @@ to get the original substitution lemma.
 With this setup, the Coq implementation mainly follows the paper proof. The main
 difference between resides in the binder representation: the paper proof uses
 named representation whereas the Coq implementation uses De Bruijn indices.
-However, the main hurdles has been tackled in the intermediates lemmas such as
+However, the main hurdles have been tackled in the intermediates lemmas such as
 the substitution lemma in Section [[#subst_lemma]].
 In this way, the FTLR is proved by induction on the type judgment, and is
 completely independent of the binder representation.
@@ -538,8 +544,8 @@ safety in Coq, which could lead to a convenient way to extend the language with
 non-trivial features.
 
 ** Language typeclass
-The main interest of the project was to implement type safety of \systemF in Coq,
-using logical relations. In section [[#type-safety]], we defined the
+The main interest of the project was to implement type safety of \systemF{} in Coq,
+using logical relations. In Section [[#type-safety]], we defined the
 parameterized $\safe$ predicate and a few intermediate lemmas about this
 predicate. The $\safe$ predicate does not really depend on the language, unlike
 the logical relation, which is defined over the type structure.
@@ -552,7 +558,7 @@ class that expresses what is a valid language. This is the way that Iris
 
 A generic language is a tuple
 $(\mr{Expr},~\mr{is\_value},~\mr{head\_step},~\mr{is\_ectx})$, where $\mr{Expr}$
-is the type of expressions of the language. The name of the other functions
+is the type of expressions of the language and the name of the other functions
 are self explanatory. The future work is to determine which properties
 (expressed in terms of the generic language) are necessary to make the language
 a /valid/ language. By valid language, we mean a language that allows one to
@@ -563,9 +569,9 @@ derive the properties over the $\safe$ predicate, \ie
 This improvement brings more modularity in the implementation. One can indeed
 define its own language, prove that the language is a valid language and the
 typeclass derives automatically the lemmas about the safety.
-Our variant of \systemF would be an instance of such valid language, and we
+Our variant of \systemF{} would be an instance of such valid language, and we
 could easily extend the project with type safety of another language, such as
-Simply Typed Lambda Calculus (STLC) without proving the safety lemmas again.
+Simply Typed Lambda Calculus (STLC), without proving the safety lemmas again.
 
 ** Other language properties
 As mentioned earlier, logical relations are a proof technique that can be used to
@@ -617,16 +623,17 @@ Iris [cite:@IrisProject; @jungIrisGroundModular2018] is a higher-order
 separation logic framework, implemented and verified in Coq. Iris as been shown
 to be an efficient framework to implement logical relation. In particular, an
 alternative way to implement the logical relation and prove type soundness of
-\systemF [cite:@timanyLogicalApproachType2022] could have been to use the Iris
+\systemF{} [cite:@timanyLogicalApproachType2022] could have been to use the Iris
 framework.
 
-A possible extension of \systemF is to add recursive types. However,
-[cite:@skorstengaardIntroductionLogicalRelations] has shown
-that adding recursive types is a feature that leads to a non-trivial extension of
-the logical relation: indeed, we have defined the logical relation inductively
-on the structure of type, but unfolding a recursive type does not guarantee the
-resulting type to be smaller than the folded one. Thus, it is impossible to
-simply extend the logical relation defined in this project.
+A possible extension of \systemF{} is to add recursive types. However,
+adding recursive types is a feature that leads to a non-trivial extension of the
+logical relation, as shown in
+[cite:@skorstengaardIntroductionLogicalRelations]: indeed, we have defined the
+logical relation inductively on the structure of type, but unfolding a recursive
+type does not guarantee the resulting type to be smaller than the folded one.
+Thus, it is impossible to simply extend the logical relation defined in this
+project.
 Similarly, another extension of the language is to add mutable state (for
 instance, with pointers)
 [cite:@ahmedSemanticsTypesMutable2004; @skorstengaardLogicalRelationsReferences2016]
@@ -640,18 +647,18 @@ state.
 
 ** Logical relation as an interpretation of types
 The logical relation as we defined it can be seen as an interpretation of types.
-Indeed, the logical relation for the type $\ty$ can be actually understand as
+The logical relation for the type $\ty$ can be actually understand as
 the set of expression that behaves as the type $\ty$. In Figure
 \ref{fig:logrelcomp}, we define a logical relation in a way that it highlight this
 interpretation of types.
 \input{figures/logrelComp}
 
-In his notes about logical relation [cite:@sterlingPracticalSemantics], Jon
+In his notes about logical relations [cite:@sterlingPracticalSemantics], Jon
 Sterling points out that some refactoring allows to get an instance of
-denotational semantic from a logical relation. In other words, it shows how to
+denotational semantics from a logical relation. In other words, it shows how to
 transform the logical relation into a compositionnal interpretation of terms,
 \ie define the meaning of a term with the meaning of its sub-terms. This kind of
-properties is desirable because it guides the way of proving semantic
+properties is desirable because it guides the approaches to prove semantics
 properties, and allows to abstract the reasoning.
 
 We think that exploring this direction is another way to extend the project.
@@ -669,4 +676,8 @@ implementation representations in order to make the proofs more manageable.
 
 \appendix
 * Substitution De Bruijn binders
+:PROPERTIES:
+:CUSTOM_ID: substitution-appendix
+:END:
+
 \input{figures/substDB}
