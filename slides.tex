@@ -1,4 +1,4 @@
-\documentclass[xcolor={dvipsnames}]{beamer}
+\documentclass[xcolor={usenames,dvipsnames}]{beamer}
 \title{Formalizing logical relation for System F type safety in Coq}
 \author{Bastien ROUSSEAU}
 \date{2023}
@@ -10,11 +10,12 @@
 \usepackage{mathpartir}
 \usepackage{pftools}
 
+\usepackage{generalMacros}
+\usepackage{syntaxColor}
+\input{macros}
+
 % \usepackage{capt-of}
-% \usepackage{generalMacros}
-% \usepackage[usenames,dvipsnames]{xcolor}
 % \usepackage{circledsteps}
-% \usepackage{syntaxColor}
 % \input{macros}
 
 % \theoremstyle{plain}
@@ -88,180 +89,173 @@
 \begin{frame}
   \frametitle{Introduction}
 
-  \begin{block}{Block}
+% In the lecture, paper proof of type safety for System F using logical relation.
+% In general, paper proof is prone to mistakes, so the project was to implement
+% the logical relation in Coq.
+% System F with unit and products.
+
+  \begin{block}{Paper proof}
     \begin{itemize}
-      \item item
-      \item item
+      \item Type safety System F (with unit and products)
+      \item Syntactic method VS logical relations
+      \item Paper proof: prone to mistakes
     \end{itemize}
   \end{block}
 
-  \begin{block}{Block}
+  \begin{block}{Implementation}
     \begin{itemize}
-      \item item
-      \item item
+      \item Stronger guarantees
+      \item Representations issues
+      \item Improvement and extensions
     \end{itemize}
   \end{block}
 
 \end{frame}
 
+% Table of content
 \begin{frame}{Outline}
   \begin{enumerate}
     \item On paper
     \item Implementation
           \begin{itemize}
-            \item Binders
-            \item Generalization
+            \item Nameless binders
+            \item Substitution lemma
           \end{itemize}
     \item Extensions
   \end{enumerate}
 \end{frame}
 
-\section{System F}%
+% In this section, we highlight the main steps of the proof.
+\section{On paper}%
+\begin{frame}{SystemF}
+  \begin{block}{Type safety with logical relation}
+    \begin{enumerate}
+      \item any well-typed closed term is in the logical relation
+            \[\forall e,\ \ty.\ \typed{\empctx}{e}{\ty} \Rightarrow \lr{\empctx}{e}{\ty} \]
+      \item  any term in the logical relation is safe
+            \[\forall e,\ \ty.\ \lr{\empctx}{e}{\ty} \Rightarrow \safe(e) \]
+   \end{enumerate}
 
-\begin{frame}
-  \frametitle{System F (variant) --- Syntax }
-
-  \begin{block}{Types}
-    $\tau ::= \mathrm{bool}\ |\ \tau \rightarrow \tau$
   \end{block}
 
-  \begin{block}{Terms}
-    $e ::= x\ |\ \mathrm{true}\ |\ \mathrm{false}\
-    |\ \text{if } e \text{ then } e \text{ else } e\ |\ \lambda x : \tau.\ e\ |\ e\ e$
-  \end{block}
-
-  \begin{block}{Values}
-    $v ::= x\ |\ \mathrm{true}\ |\ \mathrm{false}\ |\ \lambda x : \tau.\ e$
-  \end{block}
-\end{frame}
-
-\begin{frame}
-  \frametitle{System F (variant) --- Evaluation Call-By-Value }
-
-  \begin{block}{Evaluation context}
-    $E ::= []\ |\ \text{if } E \text{ then } e \text{ else } e\ |\ E\ e\ |\ v\ E$
-  \end{block}
-  \begin{block}{Evaluation reduction}
-    \vspace{1em}
-    \begin{mathparpagebreakable}
-      \inferH
-      {E-IfTrue}
-      {  }
-      {  \text{if } \mathrm{true} \text{ then } e_{1} \text{ else } e_{2} \rightarrow e_{1}}
-      \and
-
-      \inferH
-      {E-IfFalse}
-      {  }
-      {  \text{if } \mathrm{false} \text{ then } e_{1} \text{ else } e_{2} \rightarrow e_{2}}
-      \and
-
-      \inferH
-      {E-App}
-      {  }
-      {  (\lambda x : \tau .\ e)\ v \rightarrow e [v / x]}
-      \and
-
-      \inferH
-      {E-Step}
-      {e \rightarrow e'}
-      {E[e] \rightarrow E[e']}
-
-    \end{mathparpagebreakable}
-    \vspace{-1.5em}
-  \end{block}
-\end{frame}
-
-
-\begin{frame}
-  \frametitle{System F (variant) --- Typing }
-  % Typing judgement
-  \begin{block}{Typing judgement}
-    \vspace{1em}
-    \begin{mathparpagebreakable}
-      \inferH
-      {T-True}
-      {  }
-      {\Gamma \vdash \mathrm{true} : \mathrm{bool}}
-      \and
-
-      \inferH
-      {T-False}
-      {  }
-      {\Gamma \vdash \mathrm{false} : \mathrm{bool}}
-      \and
-
-      \inferH
-      {T-Var}
-      {\Gamma (x) = \tau}
-      {\Gamma \vdash x : \tau}
-      \and
-
-      \inferH
-      {T-Abs}
-      {\Gamma, x: \tau_{1} \vdash e : \tau_{2}}
-      {\Gamma \vdash \lambda x: \tau_{1}. e : \tau_{1} \rightarrow \tau_{2}}
-      \and
-
-      \inferH
-      {T-App}
-      {\Gamma \vdash e_{1} : \tau_{1} \rightarrow \tau_{2} \\ \Gamma \vdash e_{2} : \tau_{1}}
-      {\Gamma \vdash e_{1}\ e_{2} : \tau_{2}}
-      \and
-
-      \inferH
-      {T-IfThenElse}
-      {\Gamma \vdash e : \mathrm{bool}
-        \\ \Gamma \vdash e_{1} : \tau
-        \\ \Gamma \vdash e_{2} : \tau}
-      {\Gamma \vdash \text{if } e \text{ then } e_{1} \text{ else } e_{2} : \tau}
-    \end{mathparpagebreakable}
-    \vspace{-1.5em}
+  \begin{block}{Fundamental Theorem of the Logical Relation}
+    For any \((\typed{\tyctx;\exprctx}{e}{\ty})\),
+    \[
+      \forall \sctx,\ \sfun.\ (\sfun \Mapsto_{P} \exprctx) \Rightarrow \lr{\sctx}{\ty}{\sfun(e)}
+    \]
+    with $P = \lambda \ty,~e.~ \lr{\sctx}{\ty}{e}$.
   \end{block}
 \end{frame}
 
 \section{Implementation}%
 
 \begin{frame}
-  \frametitle{De Bruijn binders}
-  \begin{block}{Definitions}
+  \frametitle{Named binders}
+  \begin{block}{Excerpt semantics}
+    \begin{figure}[ht]
+
+      $x,y \in \mathrm{string}$
+
+      $e ::= x\
+      |\ \lam{x}{e}\
+      |\ \ldots
+      $
+      \begin{mathpar}
+        \inferH
+        {E-App}
+        {  }
+        { \app{(\lam{x}{e})}{v} \hstep \subst{e}{v}{x}}
+        \and
+      \end{mathpar}
+    \end{figure}
+  \end{block}
+
+  \begin{block}{Substitution}
     \begin{itemize}
-      \item determinism $\Rightarrow$ strongly normalizing and normalizing equivalent
+      \item Hidden in the substitution $\subst{e}{v}{x}$
+      \item Capture-avoiding
+      \item Equality up-to alpha renaming
     \end{itemize}
+  \end{block}
+
+  \begin{center}
+    Good for paper, bad for implementation
+  \end{center}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{De Bruijn binders}
+  \begin{block}{Binders}
+    \begin{itemize}
+      \item Nameless, unique, canonical representation
+      \item Variable points directly to its binder
+      \item $k$ is bound to the $k$-th enclosing binder
+    \end{itemize}
+  \end{block}
+  \begin{block}{Example}
   \end{block}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Modifications}
+  
+  \begin{block}{Semantic}
+    \begin{figure}[ht]
+
+      $k \in \NN$, $\alpha \in \NN$
+
+      $e ::= \lam{}{e} |\ \ldots$
+
+      $\ty ::= \tyforall{}{\ty} |\ \ldots$
+
+      $\exprctx ::= \empctx\ |\ \ty,\exprctx$
+
+      $\fbox{\typed{\exprctx}{e}{\ty}}$
+      \begin{mathpar}
+        \inferH
+        {T-TAbs-DeBruijn}
+        {\typed{(\mathrm{map}~(+1)~\exprctx)}{e}{\ty}}
+        {\typed{\exprctx}{\tlam{e}}{\tyforall{}{\ty}}}
+        \and
+      \end{mathpar}
+    \end{figure}
+  \end{block}
+\end{frame}
 
 \begin{frame}
   \frametitle{Substitution lemma}
-  \begin{center}
-    center
-  \end{center}
+  \begin{block}{Block}
+  \end{block}
+\end{frame}
 
-  % Show the case that does not work T-APP and explain why
+\begin{frame}
+  \frametitle{Generalized substitution lemma}
+  \begin{block}{Block}
+  \end{block}
 \end{frame}
 
 \section{Extensions}%
 
 \begin{frame}
   \frametitle{Iris}
-  Iris
-
-  \begin{block}{Recursive types}
-    \begin{itemize}
-      \item $\tau ::= \ldots\ |\ \mu \alpha. \tau$
-      \item $\mu$ is a fixpoint operator
-      \item Breaks normalization
-    \end{itemize}
+  \begin{block}{Iris}
   \end{block}
+  % \begin{block}{Recursive types}
+  %   \begin{itemize}
+  %     \item $\tau ::= \ldots\ |\ \mu \alpha. \tau$
+  %     \item $\mu$ is a fixpoint operator
+  %     \item Breaks normalization
+  %   \end{itemize}
+  % \end{block}
 
-  \begin{block}{Reference types}
-    \begin{itemize}
-      \item $\tau ::= \ldots\ |\ \text{ref } \tau$
-      \item Landin's knot: encode the recursion through the heap
-      \item Breaks normalization
-    \end{itemize}
-  \end{block}
+  % \begin{block}{Reference types}
+  %   \begin{itemize}
+  %     \item $\tau ::= \ldots\ |\ \text{ref } \tau$
+  %     \item Landin's knot: encode the recursion through the heap
+  %     \item Breaks normalization
+  %   \end{itemize}
+  % \end{block}
 \end{frame}
 
 \begin{frame}
