@@ -14,6 +14,7 @@
 \usepackage{syntaxColor}
 \input{macros}
 
+\usepackage{appendixnumberbeamer}
 % Theme
 \usecolortheme{beaver}
 \beamertemplatenavigationsymbolsempty
@@ -67,21 +68,324 @@
 % Table of content
 \begin{frame}{Outline}
   \begin{enumerate}
-    \item Type safety on paper
+    \item Reasoning of System F
     \item Implementation
           \begin{itemize}
             \item Nameless binders
             \item Substitution lemma
+            \item Different approach
           \end{itemize}
-    \item Extensions
+    % \item Extensions
   \end{enumerate}
 \end{frame}
 
 % In this section, we highlight the main steps of the proof.
 % TODO i'm not really satisfied by this first section, I am not really
 % sure about what I want to put inside it
-\section{Type safety on paper}%
+% \section{Type safety on paper}%
+\section{Reasoning on System F}%
 
+\begin{frame}{System F}
+  \begin{block}{Polymorphism}
+    \begin{itemize}
+      \item very expressive feature (compared to STLC)
+      \item main motivation to use logical relation
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{Typing judgement (excerpt)}
+    $\fbox{\typed{\tyctx; \exprctx}{e}{\ty}}$
+    \begin{mathpar}
+      \inferH
+      {T-TAbs}
+      {\typed{\alpha, \tyctx; \exprctx }{e}{\ty}
+        \\
+        \alpha \mathrm{\ is\ not\ free\ in\ }\exprctx}
+      {\typed{\tyctx; \exprctx}{\tlam{e}}{\tyforall{\alpha}{\ty}}}
+      \and
+
+      \inferH
+      {T-TApp}
+      {\typed{\tyctx; \exprctx}{e}{\tyforall{\alpha}{\ty}}}
+      {\typed{\tyctx; \exprctx}{\tapp{e}}{\subst{\ty}{\ty'}{\alpha}}}
+      \and
+    \end{mathpar}
+  \end{block}
+\end{frame}
+
+\begin{frame}{Logical relations}
+  \begin{block}{Motivation}
+    \begin{itemize}
+      \item type safety: first step towards more complex properties
+      \item logical relations scale well
+            \begin{itemize}
+              \item non-trivial features
+              \item language properties
+            \end{itemize}
+      \item well-suited for proof assistant
+    \end{itemize}
+  \end{block}
+  \begin{block}{Definition (excerpt)}
+    Interpretation context: \(\sctx ::= \empctx\ |\ (\alpha \mapsto P) :: \sctx\), \\
+    where $P \in (\mathrm{Expr} \rightarrow \PP)$.
+    \begin{flalign*}
+      \lrv{\sctx}{\alpha} \eqdef&\ \sctx(\alpha)(v)\\
+      %
+      \lrv{\sctx}{\tyforall{\alpha}{\ty}}
+      \eqdef&\
+              \exists e.~v = \tlam{e} \wedge
+              ( \forall P.~\safe_{\lrp{((\alpha \mapsto P)::\sctx)}{\ty}}(e))
+  \end{flalign*}
+  \end{block}
+\end{frame}
+
+\begin{frame}{Type safety}
+  \begin{block}{Type safety with logical relation}
+    \begin{enumerate}
+      \item any well-typed closed term is in the logical relation
+            \[\forall e,\ \ty.\ \typed{\empctx}{e}{\ty} \Rightarrow \lr{\empctx}{e}{\ty} \]
+      \item  any term in the logical relation is safe
+            \[\forall e,\ \ty.\ \lr{\empctx}{e}{\ty} \Rightarrow \safe(e) \]
+   \end{enumerate}
+
+  \end{block}
+
+  \begin{block}{Fundamental Theorem of the Logical Relation}
+    For any \((\typed{\tyctx;\exprctx}{e}{\ty})\),
+    \[
+      \forall \sctx,\ \sfun.\ (\sfun \Mapsto_{P} \exprctx) \Rightarrow \lr{\sctx}{\ty}{\sfun(e)}
+    \]
+    with $P = \lambda \ty,~e.~ \lr{\sctx}{\ty}{e}$.
+  \end{block}
+\end{frame}
+
+% In this part, we will talk a bit more about the difference between a paper proof
+% and an actual implementation. In particular, we will see what are the challenges
+% and why the Coq implementation is not just straightforwardly copy-paste the
+% paper proof
+\section{Implementation}%
+
+% THE ISSUE WITH BINDERS
+
+% What is wrong with the named binders
+
+\begin{frame}
+  \frametitle{De Bruijn binders}
+  \begin{block}{Named binder}
+    \begin{itemize}
+      % we recall that the name of the bound variables does not matter
+      \item Equality up-to alpha renaming
+      % it has to be capture-avoiding, ie. the substitution does not capture free variable
+      % possibly rename the variables
+      \item Capture-avoiding substitution
+      % parallel substitution is actually tedious to manipulate in the proofs
+      \item Good for presentation, bad for implementation
+    \end{itemize}
+  \end{block}
+
+  % binders in implementation is actually a well-known problem
+  % one solution is De Bruijn technique
+  \begin{block}{De Bruijn indices}
+    \begin{itemize}
+      \item Nameless, unique, canonical representation
+      \item Variable points directly to its binder
+      \item $k$ is bound to the $k$-th enclosing binder
+    \end{itemize}
+  \end{block}
+
+  % example to illustrate how to read a term with nameless binder
+  % \begin{block}{Example}
+    % \begin{itemize}
+    %   \item \(\lam{x}{\pair{x}{y}}
+    %         \equiv \lam{}{\pair{0}{1}} \) if $1 \mapsto y$ in the context
+    %   \item \(\lam{x}{\pair{x}{\lam{y}{\pair{x}{y}}}}
+    %         \equiv \lam{}{\pair{0}{\lam{}{\pair{1}{0}}}} \)
+    % \end{itemize}
+    % \end{block}
+
+  \begin{block}{Example}
+    \begin{center}
+      \LARGE{
+        \only<1>{\(\lam{f}{\app{(\app{f}{y})}{(\lam{x}{\app{f}{x}}})} \)}
+        \only<2>{\(\lam{}{\app{(\app{0}{y})}{(\lam{x}{\app{1}{x}}})} \)}
+        \only<3>{\(\lam{}{\app{(\app{0}{y})}{(\lam{}{\app{1}{0}}})} \)}
+        \only<4>{\(\lam{}{\app{(\app{0}{1})}{(\lam{}{\app{1}{0}}})} \)}
+      }
+    \end{center}
+  \end{block}
+
+  % example to illustrate how to substitute with binders
+  % \begin{block}{Substitution}
+  %   \begin{itemize}
+  %   \item $\subst{\pair{0}{1}}{\tt}{} = \pair{\tt}{0}$
+  %   \item $\subst{(\lam{}{\pair{0}{1}})}{\tt}{} = (\lam{}{\pair{0}{\tt}})$
+  %   \end{itemize}
+  % \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Modifications}
+  \begin{block}{Semantic}
+    \begin{itemize}
+      \item Expression and type variable De Bruijn indices
+            $k \in \NN$, $\alpha \in \NN$
+      \item Expression variable context ordered sequence
+            $\exprctx ::= \empctx\ |\ \ty,\exprctx$
+    \end{itemize}
+    \begin{mathpar}
+      \fbox{\typed{\exprctx}{e}{\ty}} \\
+      \inferH
+      {T-TAbs-DeBruijn}
+      {\typed{(\mathrm{map}~(+1)~\exprctx)}{e}{\ty}}
+      {\typed{\exprctx}{\tlam{e}}{\tyforall{}{\ty}}}
+    \end{mathpar}
+  \end{block}
+
+  \begin{block}{Logical relation}
+    \begin{itemize}
+      \item Interpretation context ordered sequence
+            $\sctx ::= \empctx\ |\ P::\sctx$
+    \end{itemize}
+    \vspace{-0.8em}
+    \begin{flalign*}
+      \lrv{\sctx}{\tyarrow{\ty_{1}}{\ty_{2}}}
+      \eqdef&\ \ldots\wedge
+              ( \forall v'.~\lr{\sctx}{\ty_{1}}{v'} \Rightarrow
+              \safe_{\lrp{\sctx}{\ty_{2}}}(\subst{e}{v'}{}))\\
+              %
+      \lrv{\sctx}{\tyforall{}{\ty}}
+      \eqdef&\ \ldots\wedge
+              ( \forall P.\ \safe_{\lrp{(P::\sctx)}{\ty}}(e))
+    \end{flalign*}
+  \end{block}
+\end{frame}
+
+% THE SUBSTITUTION LEMMA
+
+\begin{frame}
+  \frametitle{Substitution lemma}
+  \begin{block}{Lemma}
+    For any $\sctx$, $\ty$, $\ty'$ and $v$,
+    \[
+      \lrv{\sctx}{\subst{\ty}{\ty'}{}}
+      \Leftrightarrow
+      \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
+    \]
+  \end{block}
+
+  \begin{block}{Polymorphic case}
+    \only<1-2>{$\forall \sctx,\ \ty,\ \ty',\ v$.}
+    \only<3->{$\forall \sctx,\ \ty,\ \ty',\ v,\ P$.}
+    \vspace{-1em}
+    \only<1>{
+      \[
+        \lrv{\sctx}{\subst{(\tyforall{}{\ty})}{\ty'}{}}
+        \Leftrightarrow
+        \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\tyforall{}{\ty}}
+      \]
+    }
+
+    \only<2>{
+    \vspace{-0.2em}
+      \[
+        \lrv{\sctx}{(\tyforall{}\subst{\ty}{\mr{up}~\ty'}{})}
+        \Leftrightarrow
+        \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\tyforall{}{\ty}}
+      \]
+    }
+
+    % There was a typo in the report !!
+    \only<3->{
+    \vspace{-0.2em}
+      \[
+        \lrv{P::\sctx}{\subst{\ty}{\mr{up}~\ty'}{}}
+        \Leftrightarrow
+        \lrv{P::(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
+      \]
+    }
+  \end{block}
+
+ \begin{center}
+\only<4>{
+   \LARGE{Too weak }
+}
+ \end{center}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{(Generalized) Substitution lemma}
+  \begin{block}{Original Lemma}
+    For any $\sctx$, $\ty$, $\ty'$ and $v$,
+    \[
+      \lrv{\sctx}{\subst{\ty}{\ty'}{}}
+      \Leftrightarrow
+      \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
+    \]
+  \end{block}
+
+  \begin{block}{Generalized lemma}
+
+    For any $\sctx_{1}$, $\sctx_{2}$, $\ty$, $\ty'$ and $v$,
+    \begin{flalign*}
+      &\lrv{ \sctx_{1}++\sctx_{2}}{\subst{\ty}{\mathrm{upn}\ (\mathrm{len }\ \sctx_{1})\ \ty'}{}}
+      \\ \Leftrightarrow~
+      &\lrv{ \sctx_{1}++( \lrp{\sctx_{2}}{\ty'} ::\sctx_{2})}{\ty}
+    \end{flalign*}
+
+    \begin{itemize}
+      \item the free variable is under \((\mr{len}\ \sctx_{1})\) number of \(\forall.\)
+      \item proof method
+            \begin{itemize}
+              \item polymorphic case straightforward
+              \item type variable case harder
+            \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+% \section{Extensions}%
+
+\begin{frame}
+  \frametitle{Different approach}
+  \begin{block}{Iris}
+    \begin{itemize}
+      \item framework for higher-order separation logic
+      \item step indexed
+      \item logic of resources
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{Extensions of System F}
+    \begin{itemize}
+      \item recursive type (guarded by \emph{later modality})
+      \item mutable states (managed with resource describing the heap)
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Conclusion}
+  \begin{itemize}
+    \item type safety of System F using logical relation
+    \item implementation in Coq
+          \begin{itemize}
+            \item binder representation
+            \item substitution lemma
+            \item implementation choice (semantic)
+            \item free theorems
+          \end{itemize}
+    \item extensions
+          \begin{itemize}
+            \item implement in the Iris
+            \item extend System F
+            \item logical relation for other language properties
+          \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\appendix
 \begin{frame}{SystemF - Syntax and CBV semantic}
   $x,y \in \mathrm{string}$
 
@@ -220,198 +524,6 @@
  \end{footnotesize}
 \end{frame}
 
-
-\begin{frame}{Logical relation}
-  \begin{block}{Type safety with logical relation}
-    \begin{enumerate}
-      \item any well-typed closed term is in the logical relation
-            \[\forall e,\ \ty.\ \typed{\empctx}{e}{\ty} \Rightarrow \lr{\empctx}{e}{\ty} \]
-      \item  any term in the logical relation is safe
-            \[\forall e,\ \ty.\ \lr{\empctx}{e}{\ty} \Rightarrow \safe(e) \]
-   \end{enumerate}
-
-  \end{block}
-
-  \begin{block}{Fundamental Theorem of the Logical Relation}
-    For any \((\typed{\tyctx;\exprctx}{e}{\ty})\),
-    \[
-      \forall \sctx,\ \sfun.\ (\sfun \Mapsto_{P} \exprctx) \Rightarrow \lr{\sctx}{\ty}{\sfun(e)}
-    \]
-    with $P = \lambda \ty,~e.~ \lr{\sctx}{\ty}{e}$.
-  \end{block}
-\end{frame}
-
-% In this part, we will talk a bit more about the difference between a paper proof
-% and an actual implementation. In particular, we will see what are the challenges
-% and why the Coq implementation is not just straightforwardly copy-paste the
-% paper proof
-\section{Implementation}%
-
-% THE ISSUE WITH BINDERS
-
-% What is wrong with the named binders
-\begin{frame}
-  \frametitle{Named binders}
-  \begin{block}{Excerpt semantics with named binders}
-      $x,y \in \mathrm{string}$
-
-      $e ::= x\
-      |\ \lam{x}{e}\
-      |\ \ldots
-      $
-      \begin{mathpar}
-        \inferH
-        {E-App}
-        {  }
-        { \app{(\lam{x}{e})}{v} \hstep \subst{e}{v}{x}}
-        \and
-      \end{mathpar}
-  \end{block}
-
-  \begin{block}{Substitution}
-    \begin{itemize}
-      % the subtleties are somehow hidden in the substitution
-      \item Hidden in the substitution $\subst{e}{v}{x}$
-      % we recall that the name of the bound variables does not matter
-      \item Equality up-to alpha renaming
-      % it has to be capture-avoiding, ie. the substitution does not capture free variable
-      % possibly rename the variables
-      \item Capture-avoiding
-    \end{itemize}
-  \end{block}
-
-  % parallel substitution is actually tedious to manipulate in the proofs
-  \begin{center}
-    Good for presentation, bad for implementation
-  \end{center}
-
-\end{frame}
-
-\begin{frame}
-  \frametitle{De Bruijn binders}
-  % binders in implementation is actually a well-known problem
-  % one solution is De Bruijn technique
-  \begin{block}{De Bruijn indices}
-    \begin{itemize}
-      \item Nameless, unique, canonical representation
-      \item Variable points directly to its binder
-      \item $k$ is bound to the $k$-th enclosing binder
-    \end{itemize}
-  \end{block}
-
-  % example to illustrate how to read a term with nameless binder
-  \begin{block}{Examples}
-    \begin{itemize}
-      \item \(\lam{x}{\pair{x}{y}}
-            \equiv \lam{}{\pair{0}{1}} \) if $1 \mapsto y$ in the context
-      \item \(\lam{x}{\pair{x}{\lam{y}{\pair{x}{y}}}}
-            \equiv \lam{}{\pair{0}{\lam{}{\pair{1}{0}}}} \)
-    \end{itemize}
-  \end{block}
-
-  % example to illustrate how to substitute with binders
-  \begin{block}{Substitution}
-    \begin{itemize}
-    \item $\subst{\pair{0}{1}}{\tt}{} = \pair{\tt}{0}$
-    \item $\subst{(\lam{}{\pair{0}{1}})}{\tt}{} = (\lam{}{\pair{0}{\tt}})$
-    \end{itemize}
-  \end{block}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Modifications}
-  \begin{block}{Semantic}
-    \begin{columns}
-      \begin{column}{.3\linewidth}
-        $k \in \NN$, $\alpha \in \NN$
-
-        $e ::= \lam{}{e}~|\ \ldots$
-
-        $\ty ::= \tyforall{}{\ty}~|\ \ldots$
-
-        $\exprctx ::= \empctx\ |\ \ty,\exprctx$
-      \end{column}
-
-      \begin{column}{.3\linewidth}
-        \fbox{\typed{\exprctx}{e}{\ty}}
-        \begin{mathpar}
-          \inferH
-          {T-TAbs-DeBruijn}
-          {\typed{(\mathrm{map}~(+1)~\exprctx)}{e}{\ty}}
-          {\typed{\exprctx}{\tlam{e}}{\tyforall{}{\ty}}}
-        \end{mathpar}
-      \end{column}
-    \end{columns}
-  \end{block}
-
-  \begin{block}{Logical relation}
-    $\sctx ::= \empctx\ |\ P::\sctx$
-    \begin{flalign*}
-      \lrv{\sctx}{\tyarrow{\ty_{1}}{\ty_{2}}}
-      \eqdef&\
-              \exists e.~v = \lam{}{e}~\wedge \\
-              &( \forall v'.~\lr{\sctx}{\ty_{1}}{v'} \Rightarrow
-              \safe_{\lrp{\sctx}{\ty_{2}}}(\subst{e}{v'}{}))\\
-              %
-      \lrv{\sctx}{\tyforall{}{\ty}}
-      \eqdef&\
-              \exists e.\ v = \tlam{e} \wedge
-              ( \forall P.\ \safe_{\lrp{(P::\sctx)}{\ty}}(e))
-    \end{flalign*}
-  \end{block}
-\end{frame}
-
-% THE SUBSTITUTION LEMMA
-
-\begin{frame}
-  \frametitle{Substitution lemma}
-  \begin{block}{Lemma}
-    For any $\sctx$, $\ty$, $\ty'$ and $v$,
-    \[
-      \lrv{\sctx}{\subst{\ty}{\ty'}{}}
-      \Leftrightarrow
-      \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
-    \]
-  \end{block}
-
-  \begin{block}{Polymorphic case}
-    \only<1-2>{$\forall \sctx,\ \ty,\ \ty',\ v$.}
-    \only<3->{$\forall \sctx,\ \ty,\ \ty',\ v,\ P$.}
-    \vspace{-1em}
-    \only<1>{
-      \[
-        \lrv{\sctx}{\subst{(\tyforall{}{\ty})}{\ty'}{}}
-        \Leftrightarrow
-        \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\tyforall{}{\ty}}
-      \]
-    }
-
-    \only<2>{
-    \vspace{-0.2em}
-      \[
-        \lrv{\sctx}{(\tyforall{}\subst{\ty}{\mr{up}~\ty'}{})}
-        \Leftrightarrow
-        \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\tyforall{}{\ty}}
-      \]
-    }
-
-    % There was a typo in the report !!
-    \only<3->{
-    \vspace{-0.2em}
-      \[
-        \lrv{P::\sctx}{\subst{\ty}{\mr{up}~\ty'}{}}
-        \Leftrightarrow
-        \lrv{P::(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
-      \]
-    }
-  \end{block}
-
- \begin{center}
-   \LARGE{\only<4>{ Too weak }}
- \end{center}
-
-\end{frame}
-
 \begin{frame}
   \frametitle{Generalized substitution lemma}
   \begin{block}{Generalized lemma}
@@ -434,27 +546,8 @@
      \item $k > (\mathrm{len }\ \sctx_{1})$ --- renaming
    \end{itemize}
   \end{block}
-  Instantiate the lemma with $\sctx_{1} = \empctx$
-\end{frame}
 
-\section{Extensions}%
-
-\begin{frame}
-  \frametitle{Iris}
-  \begin{block}{Iris}
-    \begin{itemize}
-      \item framework for higher-order separation logic
-      \item step indexed
-      \item logic of resources
-    \end{itemize}
-  \end{block}
-
-  \begin{block}{Extensions of System F}
-    \begin{itemize}
-      \item recursive type (guarded by \emph{later modality})
-      \item mutable states (managed with resource describing the heap)
-    \end{itemize}
-  \end{block}
+  % Instantiate the lemma with $\sctx_{1} = \empctx$
 \end{frame}
 
 \begin{frame}
@@ -479,25 +572,6 @@
                                 &(\ctxh{e_{1}} \Downarrow v \Leftrightarrow \ctxh{e_{2}} \Downarrow v)
     \end{flalign*}
   \end{block}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Conclusion}
-  \begin{itemize}
-    \item type safety of System F using logical relation
-    \item implementation in Coq
-          \begin{itemize}
-            \item binder representation
-            \item substitution lemma
-            \item implementation choice (semantic)
-          \end{itemize}
-    \item extensions
-          \begin{itemize}
-            \item implement in the Iris
-            \item extend System F
-            \item logical relation for other language properties
-          \end{itemize}
-  \end{itemize}
 \end{frame}
 
 \end{document}
