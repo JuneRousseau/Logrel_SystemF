@@ -472,7 +472,9 @@ It states that a value $v$ is in the logical relation for the type
 $\ty.[\ty'/]$ if and only if we can associate its own logical relation to the
 corresponding free type variable in the interpretation mapping.
 However, while the string representation of the binder allows to prove this by
-straightforward induction on $\ty$, we cannot proceed directly by induction with
+straightforward
+induction[fn::See induction case in Appendix [[#substitution-named-appendix]]]
+on $\ty$, we cannot proceed directly by induction with
 our representation based on DeBruijn indices.
 The induction hypothesis is actually not strong enough, and the inductive case
 for the polymorphic type does not work. Indeed, the induction hypothesis is then
@@ -493,9 +495,10 @@ the proof obligation ends up being
 \[
 \lrv{P::\sctx}{\subst{\ty}{\ty'}{}}
 \Leftrightarrow
-\lrv{P::(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
+\lrv{P::(\lrp{\sctx}{\mr{up}~\ty'}::\sctx)}{\ty}
 \]
-where an additional predicate $P$ is the head of the mapping $\sctx$.
+where an additional predicate $P$ is the head of the mapping $\sctx$, and
+$\mr{up}$ means that the substitution is modified to enter under a binder.
 While we would like to use the induction hypothesis, it is not possible because
 the head of the mapping has to be the property of the substituted type variable
 $\ty'$.
@@ -516,7 +519,7 @@ $\tyforall{\ty_{1}} \tyforall{\ty_{2}} \ldots \tyforall{\ty_{n}}$.
 \lrv{ \sctx_{1}++( \lrp{\sctx_{2}}{\ty'} ::\sctx_{2})}{\ty}
 \]
 where $\subst{\ty}{\mathrm{upn}\ \kappa\ \ty'}{}$
-substitutes $\ty'$ in the type $\ty$ by renaming the variables after
+substitutes $\ty'$ in the type $\ty$ by renaming the variables greater than
 $\kappa$.
 \end{lemma*}
 It suffices to instantiate the generalized theorem with $\sctx_{1} = \empctx$
@@ -681,3 +684,57 @@ implementation representations in order to make the proofs more manageable.
 :END:
 
 \input{figures/substDB}
+* Substitution lemma with named binders
+:PROPERTIES:
+:CUSTOM_ID: substitution-named-appendix
+:END:
+For all $\ty$, $\ty'$, $\alpha$, $\xi$ and $v$, show that
+\( \lrv{\sctx}{\subst{\ty}{\ty'}{\alpha}} \Leftrightarrow \lrv{(\alpha \mapsto
+\lrp{\sctx}{\ty'})::\sctx}{\ty} \).
+We proceed by induction hypothesis on the structure of types $\ty$. We detail
+only the polymorphic case, as the other one are really straightforward.
+The induction hypothesis is basically the lemma itself.
+The proof obligation is
+\[
+\lrv{\sctx}{\subst{(\tyforall{\beta}{\ty})}{\ty'}{\alpha}}
+\Leftrightarrow
+\lrv{(\alpha \mapsto \lrp{\sctx}{\ty'}::\sctx)}{\tyforall{\beta}{\ty}}
+\]
+We can distinguish two cases.
+
+If $\alpha = \beta$, very straightforward.
+If $\alpha \neq \beta$. we first rewrite the substitution
+
+\[
+\lrv{\sctx}{(\tyforall{\beta}{\subst{\ty}{\ty'}{\alpha})}}
+\Leftrightarrow
+\lrv{(\alpha \mapsto \lrp{\sctx}{\ty'}::\sctx)}{\tyforall{\beta}{\ty}}
+\]
+
+By definition of the logical relation, we need to prove that, for any $P$
+
+\[\safe_{\lrp{\beta \mapsto P::\sctx}{(\subst{\ty}{\ty'}{\alpha})}}(v)
+\Leftrightarrow
+\safe_{\lrp{\beta \mapsto P::(\alpha \mapsto \lrp{\sctx}{\ty'}::\sctx)}{\ty}}(v)
+\]
+
+Because $v$ is a value, the \href{thm:safeval}{safe-val} lemma tells us that
+it suffices to prove:
+\[\lrp{\beta \mapsto P::\sctx}{(\subst{\ty}{\ty'}{\alpha})}(v)
+\Leftrightarrow
+\lrp{\beta \mapsto P::(\alpha \mapsto \lrp{\sctx}{\ty'}::\sctx)}{\ty}(v)
+\]
+
+We know that $\beta \neq \alpha$, so we can commute them in the interpretation context,
+such that:
+\[\lrp{\beta \mapsto P::\sctx}{(\subst{\ty}{\ty'}{\alpha})}(v)
+\Leftrightarrow
+\lrp{\alpha \mapsto \lrp{\sctx}{\ty'}::(\beta \mapsto P::\sctx)}{\ty}(v)
+\]
+
+This step is very important, because it is what makes the substitution lemma
+straightforward with named binder, but breaks with the De Bruijn binders: we can
+commute $\alpha$ and $\beta$, but the De Bruijn representation identifies the variable
+$k$ by its place in the ordered sequence of the interpretation context.
+
+We can now end using the induction hypothesis, with $\xi = (\beta \mapsto P::\sctx)$.
