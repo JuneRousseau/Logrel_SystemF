@@ -263,57 +263,6 @@
 % THE SUBSTITUTION LEMMA
 
 \begin{frame}
-  \frametitle{Substitution lemma}
-  \begin{block}{Lemma}
-    For any $\sctx$, $\ty$, $\ty'$ and $v$,
-    \[
-      \lrv{\sctx}{\subst{\ty}{\ty'}{}}
-      \Leftrightarrow
-      \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
-    \]
-  \end{block}
-
-  \begin{block}{Polymorphic case}
-    \only<1-2>{$\forall \sctx,\ \ty,\ \ty',\ v$.}
-    \only<3->{$\forall \sctx,\ \ty,\ \ty',\ v,\ P$.}
-    \vspace{-1em}
-    \only<1>{
-      \[
-        \lrv{\sctx}{\subst{(\tyforall{}{\ty})}{\ty'}{}}
-        \Leftrightarrow
-        \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\tyforall{}{\ty}}
-      \]
-    }
-
-    \only<2>{
-    \vspace{-0.2em}
-      \[
-        \lrv{\sctx}{(\tyforall{}\subst{\ty}{\mr{up}~\ty'}{})}
-        \Leftrightarrow
-        \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\tyforall{}{\ty}}
-      \]
-    }
-
-    % There was a typo in the report !!
-    \only<3->{
-    \vspace{-0.2em}
-      \[
-        \lrv{P::\sctx}{\subst{\ty}{\mr{up}~\ty'}{}}
-        \Leftrightarrow
-        \lrv{P::(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
-      \]
-    }
-  \end{block}
-
- \begin{center}
-\only<4>{
-   \LARGE{Too weak }
-}
- \end{center}
-\end{frame}
-
-
-\begin{frame}
   \frametitle{(Generalized) Substitution lemma}
   \begin{block}{Original Lemma}
     For any $\sctx$, $\ty$, $\ty'$ and $v$,
@@ -523,6 +472,57 @@
   \end{mathpar}
  \end{footnotesize}
 \end{frame}
+
+\begin{frame}
+  \frametitle{Substitution lemma}
+  \begin{block}{Lemma}
+    For any $\sctx$, $\ty$, $\ty'$ and $v$,
+    \[
+      \lrv{\sctx}{\subst{\ty}{\ty'}{}}
+      \Leftrightarrow
+      \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
+    \]
+  \end{block}
+
+  \begin{block}{Polymorphic case}
+    \only<1-2>{$\forall \sctx,\ \ty,\ \ty',\ v$.}
+    \only<3->{$\forall \sctx,\ \ty,\ \ty',\ v,\ P$.}
+    \vspace{-1em}
+    \only<1>{
+      \[
+        \lrv{\sctx}{\subst{(\tyforall{}{\ty})}{\ty'}{}}
+        \Leftrightarrow
+        \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\tyforall{}{\ty}}
+      \]
+    }
+
+    \only<2>{
+    \vspace{-0.2em}
+      \[
+        \lrv{\sctx}{(\tyforall{}\subst{\ty}{\mr{up}~\ty'}{})}
+        \Leftrightarrow
+        \lrv{(\lrp{\sctx}{\ty'}::\sctx)}{\tyforall{}{\ty}}
+      \]
+    }
+
+    % There was a typo in the report !!
+    \only<3->{
+    \vspace{-0.2em}
+      \[
+        \lrv{P::\sctx}{\subst{\ty}{\mr{up}~\ty'}{}}
+        \Leftrightarrow
+        \lrv{P::(\lrp{\sctx}{\ty'}::\sctx)}{\ty}
+      \]
+    }
+  \end{block}
+
+ \begin{center}
+\only<4>{
+   \LARGE{Too weak }
+}
+ \end{center}
+\end{frame}
+
 
 \begin{frame}
   \frametitle{Generalized substitution lemma}
