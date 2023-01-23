@@ -174,11 +174,10 @@
   \begin{block}{Named binder}
     \begin{itemize}
       % we recall that the name of the bound variables does not matter
-      \item Equality up-to alpha renaming
       % it has to be capture-avoiding, ie. the substitution does not capture free variable
       % possibly rename the variables
-      \item Capture-avoiding substitution
       % parallel substitution is actually tedious to manipulate in the proofs
+      \item Tedious parallel substitution
       \item Good for presentation, bad for implementation
     \end{itemize}
   \end{block}
@@ -190,26 +189,15 @@
       \item Nameless, unique, canonical representation
       \item Variable points directly to its binder
       \item $k$ is bound to the $k$-th enclosing binder
+      \item Motivates the proof assistant
     \end{itemize}
   \end{block}
-
-  % example to illustrate how to read a term with nameless binder
-  % \begin{block}{Example}
-    % \begin{itemize}
-    %   \item \(\lam{x}{\pair{x}{y}}
-    %         \equiv \lam{}{\pair{0}{1}} \) if $1 \mapsto y$ in the context
-    %   \item \(\lam{x}{\pair{x}{\lam{y}{\pair{x}{y}}}}
-    %         \equiv \lam{}{\pair{0}{\lam{}{\pair{1}{0}}}} \)
-    % \end{itemize}
-    % \end{block}
 
   \begin{block}{Example}
     \begin{center}
       \LARGE{
         \only<1>{\(\lam{f}{\app{(\app{f}{y})}{(\lam{x}{\app{f}{x}}})} \)}
-        \only<2>{\(\lam{}{\app{(\app{0}{y})}{(\lam{x}{\app{1}{x}}})} \)}
-        \only<3>{\(\lam{}{\app{(\app{0}{y})}{(\lam{}{\app{1}{0}}})} \)}
-        \only<4>{\(\lam{}{\app{(\app{0}{1})}{(\lam{}{\app{1}{0}}})} \)}
+        \only<2>{\(\lam{}{\app{(\app{0}{1})}{(\lam{}{\app{1}{0}}})} \)}
       }
     \end{center}
   \end{block}
