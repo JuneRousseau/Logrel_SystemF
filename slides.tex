@@ -58,8 +58,8 @@
   \begin{block}{Implementation}
     \begin{itemize}
       \item Stronger guarantees
-      \item Representations issues
-      \item Improvement and extensions
+      \item New challenges
+      \item Contrast with paper proof
     \end{itemize}
   \end{block}
 
@@ -143,9 +143,9 @@
   \begin{block}{Type safety with logical relation}
     \begin{enumerate}
       \item any well-typed closed term is in the logical relation
-            \[\forall e,\ \ty.\ \typed{\empctx}{e}{\ty} \Rightarrow \lr{\empctx}{e}{\ty} \]
+            \[\forall e,\ \ty.\ \typed{\empctx}{e}{\ty} \Rightarrow \lr{\empctx}{\ty}{e} \]
       \item  any term in the logical relation is safe
-            \[\forall e,\ \ty.\ \lr{\empctx}{e}{\ty} \Rightarrow \safe(e) \]
+            \[\forall e,\ \ty.\ \lr{\empctx}{\ty}{e} \Rightarrow \safe(e) \]
    \end{enumerate}
 
   \end{block}
